@@ -31,6 +31,13 @@ DG_COLS_T1 = ["t1dg1", "t1dg2", "t1dg3", "t1dg4", "t1dg5", "t1dg6"]
 DG_COLS_T2 = ["t2dg1", "t2dg2"]
 
 
+def _drop_total_row(df: pd.DataFrame) -> pd.DataFrame:
+    """API 응답 마지막 행은 atime='합계' (24시간 누적) — 중복 합산 방지를 위해 제거."""
+    if df.empty or "atime" not in df.columns:
+        return df
+    return df[df["atime"].astype(str).str.contains("_", na=False)].reset_index(drop=True)
+
+
 def _fetch_api(service_key: str, selectdate: int) -> pd.DataFrame:
     """API 단일 호출. 빈 응답이면 빈 DF 반환."""
     params = {
@@ -55,7 +62,7 @@ def _fetch_api(service_key: str, selectdate: int) -> pd.DataFrame:
         if c not in df.columns:
             df[c] = 0
         df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0).astype(int)
-    return df
+    return _drop_total_row(df)
 
 
 def _load_pkl(path: str) -> pd.DataFrame:
@@ -70,7 +77,7 @@ def _load_pkl(path: str) -> pd.DataFrame:
         if c not in df.columns:
             df[c] = 0
         df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0).astype(int)
-    return df
+    return _drop_total_row(df)
 
 
 def load_day(daily_dir: str, ymd: str) -> tuple[pd.DataFrame, str]:
