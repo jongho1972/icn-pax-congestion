@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#ffffff">
+  <title>인천공항 출국장 혼잡도</title>
+  <style id="auth-gate">html,body{visibility:hidden!important;overflow:hidden!important}</style>
+  <script>
+  (function() {
+    var PASS = '0708';
+    var AUTH_KEY = 'pax_congestion_auth_ok';
+    try {
+      var navEntry = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || null;
+      var navType = navEntry ? navEntry.type : '';
+      var sameOriginRef = document.referrer && document.referrer.indexOf(location.origin) === 0;
+      if (navType === 'back_forward' && !sameOriginRef) {
+        sessionStorage.removeItem(AUTH_KEY);
+      }
+    } catch (e) {}
+    var gateStyle = document.getElementById('auth-gate');
+    try {
+      if (sessionStorage.getItem(AUTH_KEY) === '1') {
+        if (gateStyle) gateStyle.remove();
+        return;
+      }
+    } catch (e) {}
+    if (gateStyle) {
+      gateStyle.textContent = 'html,body{visibility:hidden!important;overflow:hidden!important}#pw-overlay,#pw-overlay *{visibility:visible!important}';
+    }
+    function setBodyInert(on) {
+      var targets = document.querySelectorAll('.container');
+      targets.forEach(function(el) {
+        if (on) el.setAttribute('inert', '');
+        else el.removeAttribute('inert');
+      });
+    }
+    function mountGate() {
+      var style = document.createElement('style');
+      style.id = 'pw-style';
+      style.textContent =
+        '#pw-overlay{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif}' +
+        '#pw-box{text-align:center;padding:48px 40px;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08)}' +
+        '#pw-box h2{margin:0 0 8px;font-size:18px;color:#333}' +
+        '#pw-box p{color:#333;margin:0 0 8px;font-size:14px}' +
+        '#pw-box input{padding:12px 16px;font-size:18px;border:1px solid #ddd;border-radius:8px;text-align:center;width:140px;letter-spacing:8px}' +
+        '#pw-box input:focus-visible{outline:2px solid #1F6FEB;outline-offset:2px;border-color:#8C0023}' +
+        '#pw-box button{margin-left:8px;padding:12px 24px;font-size:14px;background:#8C0023;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600}' +
+        '#pw-box button:hover{background:#a80030}' +
+        '#pw-box button:focus-visible{outline:2px solid #1F6FEB;outline-offset:2px}' +
+        '#pw-err{color:#c00;font-size:13px;margin-top:12px;display:none}';
+      document.head.appendChild(style);
+      var overlay = document.createElement('div');
+      overlay.id = 'pw-overlay';
+      overlay.setAttribute('role', 'dialog');
+      overlay.setAttribute('aria-modal', 'true');
+      overlay.setAttribute('aria-labelledby', 'pw-title');
+      overlay.innerHTML =
+        '<form id="pw-box" novalidate>' +
+          '<h2 id="pw-title">접근 제한</h2>' +
+          '<p id="pw-desc">비밀번호를 입력하세요</p>' +
+          '<div><input id="pw-input" type="password" maxlength="10" autocomplete="off" aria-label="비밀번호" aria-describedby="pw-desc">' +
+          '<button id="pw-btn" type="submit">확인</button></div>' +
+          '<div id="pw-err" role="alert" aria-live="assertive">비밀번호가 올바르지 않습니다</div>' +
+        '</form>';
+      document.body.appendChild(overlay);
+      setBodyInert(true);
+      var input = overlay.querySelector('#pw-input');
+      var err = overlay.querySelector('#pw-err');
+      function unlock() {
+        try { sessionStorage.setItem(AUTH_KEY, '1'); } catch (e) {}
+        if (gateStyle) gateStyle.remove();
+        setBodyInert(false);
+        overlay.remove();
+        style.remove();
+        setTimeout(function() {
+          try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+          if (window.Plotly && window.Plotly.Plots) {
+            document.querySelectorAll('.chart').forEach(function(el) {
+              try { window.Plotly.Plots.resize(el); } catch (e) {}
+            });
+          }
+        }, 50);
+      }
+      function check(e) {
+        if (e && e.preventDefault) e.preventDefault();
+        if (input.value === PASS) {
+          unlock();
+        } else {
+          err.style.display = 'block';
+          input.value = '';
+          input.focus();
+        }
+      }
+      overlay.querySelector('#pw-box').addEventListener('submit', check);
+      if (window.matchMedia('(min-width: 640px)').matches) {
+        setTimeout(function() { input.focus(); }, 0);
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', mountGate);
+    } else {
+      mountGate();
+    }
+  })();
+  </script>
+  <link rel="preconnect" href="https://cdn.plot.ly" crossorigin>
+  <link rel="preload" as="script" href="https://cdn.plot.ly/plotly-basic-2.35.3.min.js" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --crimson:    #8C0023;
+      --gold:       #B8922A;
+      --t1:         #1F6FEB;
+      --t1-soft:    #DCE8F6;
+      --t2:         #C26420;
+      --t2-soft:    #F7E4D2;
+      --bg:         #FAFAF8;
+      --card:       #FFFFFF;
+      --text:       #1A1A1A;
+      --text-mid:   #4A4A4A;
+      --text-light: #909090;
+      --border:     rgba(0,0,0,0.08);
+      --red-day:    #B42318;
+      --future-bg:  #FFFBE6;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: 'Outfit', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 24px 60px;
+    }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+      padding-bottom: 18px; border-bottom: 2px solid var(--crimson);
+      margin-bottom: 24px;
+    }
+    .topbar h1 {
+      font-size: 22px; font-weight: 800; color: var(--crimson);
+      margin: 0; letter-spacing: -0.3px;
+    }
+    .meta { color: var(--text-light); font-size: 12px; line-height: 1.5; }
+    .meta b { color: var(--text-mid); font-weight: 600; }
+
+    /* KPI 카드 */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      margin-bottom: 26px;
+    }
+    .kpi-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+      background: var(--crimson);
+    }
+    .kpi-card.tomorrow::before { background: var(--gold); }
+    .kpi-label {
+      font-size: 12px; color: var(--text-light); font-weight: 600;
+      letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px;
+    }
+    .kpi-date { font-size: 13px; color: var(--text-mid); margin-bottom: 12px; }
+    .kpi-main {
+      font-size: 32px; font-weight: 800; color: var(--text);
+      letter-spacing: -0.5px; font-variant-numeric: tabular-nums;
+    }
+    .kpi-main .unit { font-size: 14px; color: var(--text-light); font-weight: 500; margin-left: 4px; }
+    .kpi-sub {
+      display: flex; gap: 12px; flex-wrap: wrap;
+      margin-top: 10px; font-size: 12px; color: var(--text-mid);
+    }
+    .kpi-sub .seg { padding: 3px 9px; border-radius: 6px; background: #F2F4F7; }
+    .kpi-sub .t1 { background: var(--t1-soft); color: var(--t1); font-weight: 600; }
+    .kpi-sub .t2 { background: var(--t2-soft); color: var(--t2); font-weight: 600; }
+
+    /* 섹션 */
+    section { margin-bottom: 36px; }
+    .section-title {
+      font-size: 15px; font-weight: 700; color: var(--text);
+      margin: 0 0 12px; letter-spacing: -0.2px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-title::before {
+      content: ''; width: 3px; height: 14px; background: var(--crimson); border-radius: 2px;
+    }
+    .section-note {
+      font-size: 12px; color: var(--text-light); margin-top: 8px;
+    }
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .chart-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 14px 10px;
+    }
+    .chart-card h3 {
+      font-size: 13px; font-weight: 700; color: var(--text-mid);
+      margin: 0 0 6px; padding: 0 4px;
+    }
+    .chart {
+      width: 100%;
+      height: 320px;
+    }
+    .chart.tall { height: 380px; }
+
+    /* 표 */
+    .table-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+    table.daily {
+      width: 100%; border-collapse: collapse;
+      font-size: 13px; font-variant-numeric: tabular-nums;
+    }
+    table.daily th, table.daily td {
+      padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--border);
+    }
+    table.daily thead th {
+      background: #F8F8F5; color: var(--text-mid); font-weight: 700;
+      font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px;
+      border-bottom: 2px solid var(--border);
+    }
+    table.daily td.label, table.daily th.label, table.daily td.dow, table.daily th.dow {
+      text-align: left;
+    }
+    table.daily td.label { font-weight: 600; }
+    table.daily tr.future-row { background: var(--future-bg); }
+    table.daily tr.today-row { background: #EEF4FF; font-weight: 700; }
+    table.daily tr.today-row td.label::after { content: ' (오늘)'; font-size: 11px; color: var(--t1); font-weight: 700; }
+    table.daily td.red, table.daily th.red { color: var(--red-day); }
+    table.daily td.t1 { color: var(--t1); }
+    table.daily td.t2 { color: var(--t2); }
+    table.daily td.dash { color: var(--text-light); }
+
+    /* 푸터 */
+    .footnote {
+      margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--text-light); line-height: 1.65;
+    }
+    .footnote ul { margin: 6px 0 0 18px; padding: 0; }
+    .footnote li { margin-bottom: 3px; }
+    .src-pill {
+      display: inline-block; padding: 1px 7px; border-radius: 10px;
+      font-size: 11px; font-weight: 600; line-height: 1.5;
+      background: #EEF4FF; color: var(--t1); margin-left: 4px;
+    }
+    .src-pill.d1 { background: #FFF6E0; color: #8A6A00; }
+    .src-pill.live { background: #E8F4EC; color: #1B7A3E; }
+    .src-pill.none { background: #F2F4F7; color: var(--text-light); }
+
+    @media (max-width: 720px) {
+      .container { padding: 18px 14px 40px; }
+      .topbar h1 { font-size: 18px; }
+      .kpi-grid { grid-template-columns: 1fr; }
+      .chart-grid { grid-template-columns: 1fr; }
+      .chart { height: 280px; }
+      .chart.tall { height: 320px; }
+      table.daily { font-size: 12px; }
+      table.daily th, table.daily td { padding: 6px 6px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="topbar">
+    <h1>인천공항 출국장 혼잡도</h1>
+    <div class="meta">
+      데이터 기준 : <b>{{ p.fetched_at }}</b><br>
+      누적 데이터 : <b>{{ p.data_dates_count }}</b>일치
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-grid">
+    <div class="kpi-card today">
+      <div class="kpi-label">오늘 (D-0)</div>
+      <div class="kpi-date">{{ p.today.date }} ({{ p.today.weekday }})</div>
+      <div class="kpi-main">{{ "{:,}".format(p.today.kpi.total) }}<span class="unit">명</span></div>
+      <div class="kpi-sub">
+        <span class="seg t1">T1 {{ "{:,}".format(p.today.kpi.T1) }}</span>
+        <span class="seg t2">T2 {{ "{:,}".format(p.today.kpi.T2) }}</span>
+        <span class="seg">피크 {{ p.today.kpi_peak_hour_label }} · {{ "{:,}".format(p.today.kpi.peak_total) }}명</span>
+      </div>
+    </div>
+    <div class="kpi-card tomorrow">
+      <div class="kpi-label">내일 예상 (D+1)</div>
+      <div class="kpi-date">{{ p.tomorrow.date }} ({{ p.tomorrow.weekday }})</div>
+      <div class="kpi-main">
+        {% if p.tomorrow.kpi.total > 0 %}
+          {{ "{:,}".format(p.tomorrow.kpi.total) }}<span class="unit">명</span>
+        {% else %}
+          <span style="color:var(--text-light);font-size:18px;font-weight:600;">데이터 미생성</span>
+        {% endif %}
+      </div>
+      <div class="kpi-sub">
+        {% if p.tomorrow.kpi.total > 0 %}
+          <span class="seg t1">T1 {{ "{:,}".format(p.tomorrow.kpi.T1) }}</span>
+          <span class="seg t2">T2 {{ "{:,}".format(p.tomorrow.kpi.T2) }}</span>
+          <span class="seg">피크 {{ p.tomorrow.kpi_peak_hour_label }} · {{ "{:,}".format(p.tomorrow.kpi.peak_total) }}명</span>
+        {% else %}
+          <span class="seg">D+1 예측은 보통 자정 직전에 생성됩니다</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- 시간대별 차트 -->
+  <section>
+    <h2 class="section-title">시간대별 출국장 이용객수</h2>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>T1 (제1터미널) — 출국장 D1~D6</h3>
+        <div id="chart-hourly-t1" class="chart"></div>
+      </div>
+      <div class="chart-card">
+        <h3>T2 (제2터미널) — 출국장 D1·D2</h3>
+        <div id="chart-hourly-t2" class="chart"></div>
+      </div>
+    </div>
+    <p class="section-note">실선 = 오늘 (D-0) · 점선 = 내일 예상 (D+1) · 단위 : 명</p>
+  </section>
+
+  <!-- 출국장별 분포 (오늘 기준 stacked bar) -->
+  <section>
+    <h2 class="section-title">출국장별 시간대 분포 (오늘)</h2>
+    <div class="chart-card">
+      <div id="chart-per-gate" class="chart tall"></div>
+    </div>
+    <p class="section-note">오늘 기준 시간대별 각 출국장 이용객수 누적. T1 D1~D6 (파랑 계열) · T2 D1·D2 (주황 계열)</p>
+  </section>
+
+  <!-- 일자별 추이 -->
+  <section>
+    <h2 class="section-title">일자별 추이 (최근 30일)</h2>
+    <div class="chart-card">
+      <div id="chart-daily" class="chart tall"></div>
+    </div>
+    <p class="section-note">노란 배경 = 미래 (D+1 예측) · 빨강 = 주말</p>
+  </section>
+
+  <!-- 일자별 표 -->
+  <section>
+    <h2 class="section-title">일자별 표</h2>
+    <div class="table-wrap">
+      <table class="daily">
+        <thead>
+          <tr>
+            <th class="label">날짜</th>
+            <th class="dow">요일</th>
+            <th>T1</th>
+            <th>T2</th>
+            <th>합계</th>
+            <th>피크 시간대</th>
+            <th>피크 객수</th>
+            <th>출처</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in p.table_rows %}
+          <tr class="{% if r.is_today %}today-row{% elif r.is_future %}future-row{% endif %}">
+            <td class="label{% if r.is_red %} red{% endif %}">{{ r.label }}</td>
+            <td class="dow{% if r.is_red %} red{% endif %}">{{ r.weekday }}</td>
+            <td class="t1">{% if r.T1 > 0 %}{{ "{:,}".format(r.T1) }}{% else %}<span class="dash">—</span>{% endif %}</td>
+            <td class="t2">{% if r.T2 > 0 %}{{ "{:,}".format(r.T2) }}{% else %}<span class="dash">—</span>{% endif %}</td>
+            <td>{% if r.total > 0 %}{{ "{:,}".format(r.total) }}{% else %}<span class="dash">—</span>{% endif %}</td>
+            <td>{{ r.peak_hour }}</td>
+            <td>{% if r.peak_total > 0 %}{{ "{:,}".format(r.peak_total) }}{% else %}<span class="dash">—</span>{% endif %}</td>
+            <td>
+              {% if r.source == 'd0' %}<span class="src-pill">실측</span>
+              {% elif r.source == 'd1' %}<span class="src-pill d1">예측</span>
+              {% elif r.source == 'live' %}<span class="src-pill live">실시간</span>
+              {% else %}<span class="src-pill none">없음</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="footnote">
+    <b>데이터 출처</b> : 인천국제공항공사 OpenAPI <code>getPassgrAnncmt</code> · D-0(오늘) ~ D+1(내일) 시간대별 예상 이용객수<br>
+    <b>수집 정책</b>
+    <ul>
+      <li>매일 23:30 KST에 D-0(실측 근사) + D+1(예측) 둘 다 수집해 <code>Daily_Data/</code>에 누적</li>
+      <li>각 날짜의 D-0 수집본을 최종값으로 사용 (D+1은 백업·검증용)</li>
+      <li>D+1 예측은 인천공항 측 데이터 생성 시점에 따라 비어있을 수 있음</li>
+    </ul>
+    <b>출국장 분류</b>
+    <ul>
+      <li>T1 : D1·D2(서편) · D3(중앙) · D4·D5·D6(동편)</li>
+      <li>T2 : D1·D2</li>
+    </ul>
+  </div>
+
+</div>
+
+<script id="payload-data" type="application/json">{{ payload_json | safe }}</script>
+<script src="https://cdn.plot.ly/plotly-basic-2.35.3.min.js" crossorigin></script>
+<script>
+(function() {
+  var P = JSON.parse(document.getElementById('payload-data').textContent);
+  var COMMON_LAYOUT = {
+    margin: { l: 50, r: 18, t: 10, b: 40 },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    font: { family: 'Outfit, Noto Sans KR, sans-serif', size: 11, color: '#1A1A1A' },
+    showlegend: true,
+    legend: { orientation: 'h', y: 1.12, x: 0, yanchor: 'bottom', font: { size: 11 } },
+    hovermode: 'x unified',
+  };
+  var CONFIG = { displayModeBar: false, responsive: true };
+
+  function hourTicks() {
+    return P.today_hourly.hours.map(function(h) { return h + '시'; });
+  }
+
+  // 시간대별 T1
+  Plotly.newPlot('chart-hourly-t1', [
+    {
+      x: hourTicks(),
+      y: P.today_hourly.T1,
+      type: 'scatter', mode: 'lines+markers',
+      line: { color: '#1F6FEB', width: 2.5 },
+      marker: { size: 5 },
+      name: '오늘 T1',
+    },
+    {
+      x: hourTicks(),
+      y: P.tomorrow_hourly.T1,
+      type: 'scatter', mode: 'lines',
+      line: { color: '#1F6FEB', width: 2, dash: 'dot' },
+      name: '내일 T1',
+    },
+  ], Object.assign({}, COMMON_LAYOUT, {
+    yaxis: { title: { text: '객수', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
+    xaxis: { tickfont: { size: 10 } },
+  }), CONFIG);
+
+  // 시간대별 T2
+  Plotly.newPlot('chart-hourly-t2', [
+    {
+      x: hourTicks(),
+      y: P.today_hourly.T2,
+      type: 'scatter', mode: 'lines+markers',
+      line: { color: '#C26420', width: 2.5 },
+      marker: { size: 5 },
+      name: '오늘 T2',
+    },
+    {
+      x: hourTicks(),
+      y: P.tomorrow_hourly.T2,
+      type: 'scatter', mode: 'lines',
+      line: { color: '#C26420', width: 2, dash: 'dot' },
+      name: '내일 T2',
+    },
+  ], Object.assign({}, COMMON_LAYOUT, {
+    yaxis: { title: { text: '객수', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
+    xaxis: { tickfont: { size: 10 } },
+  }), CONFIG);
+
+  // 출국장별 stacked bar (오늘 기준)
+  var T1_PALETTE = ['#1F6FEB', '#3B83EE', '#5A98F1', '#7AAEF4', '#9AC3F7', '#BAD8FA'];
+  var T2_PALETTE = ['#C26420', '#DA8240'];
+  var perGate = P.today_per_gate;
+  var perGateTraces = [];
+  ['t1dg1','t1dg2','t1dg3','t1dg4','t1dg5','t1dg6'].forEach(function(c, i) {
+    perGateTraces.push({
+      x: hourTicks(), y: perGate[c],
+      type: 'bar', name: 'T1 D' + (i+1),
+      marker: { color: T1_PALETTE[i] },
+    });
+  });
+  ['t2dg1','t2dg2'].forEach(function(c, i) {
+    perGateTraces.push({
+      x: hourTicks(), y: perGate[c],
+      type: 'bar', name: 'T2 D' + (i+1),
+      marker: { color: T2_PALETTE[i] },
+    });
+  });
+  Plotly.newPlot('chart-per-gate', perGateTraces, Object.assign({}, COMMON_LAYOUT, {
+    barmode: 'stack',
+    yaxis: { title: { text: '객수', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
+    xaxis: { tickfont: { size: 10 } },
+    legend: { orientation: 'h', y: 1.08, x: 0, yanchor: 'bottom', font: { size: 10 } },
+  }), CONFIG);
+
+  // 일자별 추이
+  var dc = P.daily_chart;
+  var futureShapes = [];
+  for (var i = 0; i < dc.is_future.length; i++) {
+    if (dc.is_future[i]) {
+      futureShapes.push({
+        type: 'rect', xref: 'x', yref: 'paper',
+        x0: i - 0.5, x1: i + 0.5, y0: 0, y1: 1,
+        fillcolor: 'rgba(255,200,40,0.10)', line: { width: 0 }, layer: 'below',
+      });
+    }
+  }
+  if (dc.today_idx >= 0) {
+    futureShapes.push({
+      type: 'line', xref: 'x', yref: 'paper',
+      x0: dc.today_idx, x1: dc.today_idx, y0: 0, y1: 1,
+      line: { color: '#64748B', width: 1, dash: 'dot' },
+    });
+  }
+  Plotly.newPlot('chart-daily', [
+    { x: dc.dates, y: dc.T1, name: 'T1', type: 'scatter', mode: 'lines+markers',
+      line: { color: '#1F6FEB', width: 2 }, marker: { size: 5 } },
+    { x: dc.dates, y: dc.T2, name: 'T2', type: 'scatter', mode: 'lines+markers',
+      line: { color: '#C26420', width: 2 }, marker: { size: 5 } },
+    { x: dc.dates, y: dc.total, name: '합계', type: 'scatter', mode: 'lines',
+      line: { color: '#8C0023', width: 1.5, dash: 'dash' } },
+  ], Object.assign({}, COMMON_LAYOUT, {
+    yaxis: { title: { text: '객수', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
+    xaxis: {
+      tickfont: { size: 10 },
+      tickvals: dc.dates.filter(function(_, i) { return i % 3 === 0; }),
+    },
+    shapes: futureShapes,
+  }), CONFIG);
+})();
+</script>
+
+</body>
+</html>

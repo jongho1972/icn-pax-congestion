@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+jinja2
+python-dotenv
+pandas>=2.0
+numpy>=2.0
+requests>=2.31
+holidays>=0.50
