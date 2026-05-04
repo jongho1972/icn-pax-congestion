@@ -32,6 +32,7 @@ BASE = Path(__file__).resolve().parent
 DAILY_DIR = BASE / "Daily_Data"
 
 DAILY_TREND_DAYS = 30  # 일자별 차트 표시 일수 (D-29 ~ D+1)
+DATA_START_DATE = date(2026, 5, 1)  # 이 날짜 이전 데이터는 무시 (사전 테스트분 제외)
 
 app = FastAPI(title="인천공항 출국장 혼잡도")
 app.add_middleware(GZipMiddleware, minimum_size=500)
@@ -91,6 +92,8 @@ def build_payload(service_key: str | None) -> dict:
 
     tomorrow = today + timedelta(days=1)
     range_start = today - timedelta(days=DAILY_TREND_DAYS - 2)  # D-29부터
+    if range_start < DATA_START_DATE:
+        range_start = DATA_START_DATE
     daily_map = load_range(str(DAILY_DIR), range_start, tomorrow)
 
     # 오늘·내일 데이터: 디스크 우선 → 비어있으면 라이브 API fallback
@@ -190,7 +193,10 @@ def build_payload(service_key: str | None) -> dict:
         "daily_chart": daily_chart,
         "table_rows": table_rows,
         "fetched_at": fetched_at.strftime("%Y-%m-%d %H:%M"),
-        "data_dates_count": len(list_available_dates(str(DAILY_DIR))),
+        "data_dates_count": sum(
+            1 for d in list_available_dates(str(DAILY_DIR))
+            if d >= DATA_START_DATE.strftime("%Y%m%d")
+        ),
     }
 
     _cache_set(cache_key, payload)
@@ -260,6 +266,10 @@ async def export_raw(start: str, end: str):
         raise HTTPException(400, "start/end는 YYYYMMDD 형식이어야 합니다.")
     if end_dt < start_dt:
         start_dt, end_dt = end_dt, start_dt
+    if start_dt < DATA_START_DATE:
+        start_dt = DATA_START_DATE
+    if end_dt < DATA_START_DATE:
+        raise HTTPException(404, "해당 기간의 데이터가 없습니다.")
     if (end_dt - start_dt).days > 366:
         raise HTTPException(400, "최대 366일 범위까지 내보낼 수 있습니다.")
 
