@@ -81,8 +81,8 @@ INCHEON_API_KEY="..." uvicorn main:app --reload --port 8000
   - 스케줄: 매일 23:30 KST (= 14:30 UTC)
   - 동작: 원격 에이전트가 레포 clone → `backfill.py` 실행 → `Daily_Data/` 갱신 → 변경 있으면 `git push origin main`
   - 출발항공편(17:00 KST)과 시간 분리해서 트리거 충돌 방지
-- **GitHub Actions** `.github/workflows/keep-alive.yml`
-  - 스케줄: 10분마다 `/healthz` 핑 (Render 무료 슬립 방지)
+- **GitHub Actions** `.github/workflows/keep-alive.yml` (Render 슬립 방지 + 페이로드 캐시 워밍)
+  - 스케줄: 10분마다 `GET /` 호출 (`--max-time 300` — 콜드 빌드 1~3분 흡수). 메인 페이지 페이로드 캐시까지 워밍해 컨테이너 재시작 후 첫 사용자가 빌드 비용 떠안는 일 방지
 - **GitHub Actions** `.github/workflows/refresh-cache.yml`
   - 스케줄: 매일 23:35 KST (= 14:35 UTC)
   - 동작: `POST /api/refresh` (헤더 `X-Refresh-Token: ${{ secrets.REFRESH_TOKEN }}`)
