@@ -219,6 +219,7 @@ WEEKDAY_KR = ["월", "화", "수", "목", "금", "토", "일"]
 
 
 def fmt_peak_hour(h) -> str:
+    """피크 시간대 라벨. 형식 통일: '08~09' (시작~종료, '시' 생략)."""
     if h is None:
         return "—"
     try:
@@ -232,4 +233,4 @@ def fmt_peak_hour(h) -> str:
         return "—"
     if h < 0 or h > 23:
         return "—"
-    return f"{h:02d}~{(h+1)%24:02d}시"
+    return f"{h:02d}~{(h+1)%24:02d}"

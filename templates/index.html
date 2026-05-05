@@ -235,7 +235,7 @@
       text-transform: uppercase; letter-spacing: 0.4px; margin-right: 4px;
     }
     .kpi-delta-base {
-      font-size: 11px; font-weight: 600; opacity: 0.75; margin-left: 2px;
+      font-size: 11px; font-weight: 600; opacity: 0.75; margin-right: 4px;
     }
     .kpi-empty {
       font-size: 14px; color: var(--text-light); font-weight: 600;
@@ -466,15 +466,14 @@
           {% if p.delta_pct_T1 is not none %}
             {% set dcls = 'pos' if p.delta_pct_T1 > 0 else ('neg' if p.delta_pct_T1 < 0 else 'flat') %}
             {% set darr = '▲' if p.delta_pct_T1 > 0 else ('▼' if p.delta_pct_T1 < 0 else '―') %}
-            <div class="kpi-delta {{ dcls }}" title="T1 MTD 일평균 {{ '{:,}'.format(p.mtd.T1) }}명 대비">
+            <div class="kpi-delta {{ dcls }}" title="이번 달 일평균 {{ '{:,}'.format(p.mtd.T1) }}명 대비">
+              <span class="kpi-delta-base">MTD 대비</span>
               {{ darr }} {{ '{:+.1f}'.format(p.delta_pct_T1) }}%
-              <span class="kpi-delta-base">vs 이번 달 평균</span>
             </div>
           {% endif %}
         </div>
         <div class="kpi-baseline">
           <span><span class="lbl">MTD</span><b>{{ "{:,}".format(p.mtd.T1) if p.mtd.T1 > 0 else '—' }}</b>명/일</span>
-          <span><span class="lbl">피크</span><b>{{ p.tomorrow.peak_hour_T1_label }}</b> · <b>{{ "{:,}".format(p.tomorrow.kpi.peak_total_T1) }}</b>명</span>
         </div>
       {% else %}
         <div class="kpi-empty">D+1 예측 미생성 — 보통 23:30 KST 갱신</div>
@@ -490,15 +489,14 @@
           {% if p.delta_pct_T2 is not none %}
             {% set dcls = 'pos' if p.delta_pct_T2 > 0 else ('neg' if p.delta_pct_T2 < 0 else 'flat') %}
             {% set darr = '▲' if p.delta_pct_T2 > 0 else ('▼' if p.delta_pct_T2 < 0 else '―') %}
-            <div class="kpi-delta {{ dcls }}" title="T2 MTD 일평균 {{ '{:,}'.format(p.mtd.T2) }}명 대비">
+            <div class="kpi-delta {{ dcls }}" title="이번 달 일평균 {{ '{:,}'.format(p.mtd.T2) }}명 대비">
+              <span class="kpi-delta-base">MTD 대비</span>
               {{ darr }} {{ '{:+.1f}'.format(p.delta_pct_T2) }}%
-              <span class="kpi-delta-base">vs 이번 달 평균</span>
             </div>
           {% endif %}
         </div>
         <div class="kpi-baseline">
           <span><span class="lbl">MTD</span><b>{{ "{:,}".format(p.mtd.T2) if p.mtd.T2 > 0 else '—' }}</b>명/일</span>
-          <span><span class="lbl">피크</span><b>{{ p.tomorrow.peak_hour_T2_label }}</b> · <b>{{ "{:,}".format(p.tomorrow.kpi.peak_total_T2) }}</b>명</span>
         </div>
       {% else %}
         <div class="kpi-empty">D+1 예측 미생성 — 보통 23:30 KST 갱신</div>
@@ -514,30 +512,10 @@
       <label class="map-hour">시간대
         <select id="map-hour-select" aria-label="시간대 선택">
           <option value="all">전체 합계</option>
-          <option value="0">00~01시</option>
-          <option value="1">01~02시</option>
-          <option value="2">02~03시</option>
-          <option value="3">03~04시</option>
-          <option value="4">04~05시</option>
-          <option value="5">05~06시</option>
-          <option value="6">06~07시</option>
-          <option value="7">07~08시</option>
-          <option value="8">08~09시</option>
-          <option value="9">09~10시</option>
-          <option value="10">10~11시</option>
-          <option value="11">11~12시</option>
-          <option value="12">12~13시</option>
-          <option value="13">13~14시</option>
-          <option value="14">14~15시</option>
-          <option value="15">15~16시</option>
-          <option value="16">16~17시</option>
-          <option value="17">17~18시</option>
-          <option value="18">18~19시</option>
-          <option value="19">19~20시</option>
-          <option value="20">20~21시</option>
-          <option value="21">21~22시</option>
-          <option value="22">22~23시</option>
-          <option value="23">23~24시</option>
+          <option value="morning">오전 (06~12)</option>
+          <option value="afternoon">오후 (12~18)</option>
+          <option value="evening">저녁 (18~22)</option>
+          <option value="night">심야 (22~06)</option>
         </select>
       </label>
     </div>
@@ -661,10 +639,8 @@
     </div>
 
     <p class="section-note">
-      실제 인천공항 도면 위에 출국장별 D+1 예상 객수를 색상 강도로 오버레이. 평균은 이번 달 1일~어제까지의 일평균 (실측).
-      <br>※ <b>T1 6번</b>은 교통약자 우대 출구로 공항 예상혼잡도 집계 대상에서 제외 (공식 가이드 명시).
-      <b>T1 1번</b>은 2025.10.1 운영 개시.
-      <br>※ 도면 출처 : 인천국제공항공사 공식 안내. 데이터 출처 : OpenAPI <code>getPassgrAnncmt</code> v5.0 (2025-10-30).
+      각 출국장의 내일 예상 승객수와 이번 달 평균. 색상이 진할수록 붐빔.
+      시간대 셀렉터로 오전·오후·저녁·심야 그룹별 분포도 확인 가능합니다.
     </p>
   </section>
 
@@ -716,25 +692,15 @@
         <div id="chart-hourly-t2" class="chart"></div>
       </div>
     </div>
-    <p class="section-note">실선 = 내일 예상 (D+1) · 점선 = 이번 달 일평균 (MTD) · 단위 : 명</p>
+    <p class="section-note">실선 = 내일 예상 · 점선 = 이번 달 평균 · 단위 : 명</p>
   </section>
 
   <div class="footnote">
-    <b>데이터 출처</b>
     <ul>
-      <li><b>OpenAPI</b> <code>getPassgrAnncmt</code> v5.0 — D-0(오늘) + D+1(내일) 시간대별 예상 이용객수 · 실시간 5분 갱신</li>
-      <li><b>airport.kr 공식 페이지</b> — D-2 ~ D+2 (7일 발표 데이터) · 매일 17:00 KST 갱신 · 출국장 5,6번 합산 표시 (6번=교통약자=0)</li>
-    </ul>
-    <b>수집 정책</b>
-    <ul>
-      <li>17:05 KST cron : OpenAPI(D-0+D+1) + airport.kr 스크래핑(D-2~D+2) → 발표 직후 D+1·D+2 신선도 확보</li>
-      <li>23:30 KST cron : OpenAPI(D-0+D+1) + airport.kr 스크래핑 → 그날 D-0 마감값 덮어쓰기</li>
-      <li>조회 우선순위 : <code>d0</code>(그날 마감) → <code>web</code>(공식 발표) → <code>d1</code>(전일 D+1 백업) → live API</li>
-    </ul>
-    <b>출국장 분류 (공식 도면 매핑 · OpenAPI 가이드 v5.0 기준)</b>
-    <ul>
-      <li>T1 : 1번(동편 끝, 카운터 A·B · 2025.10.1 운영 개시) · 2번(C·D·E) · 3번(F·G) · 4번(H·J) · 5번(K·L) · 6번(서편 끝, M·N · <b>교통약자 우대 출구 — 혼잡도 집계 제외</b>) — API <code>t1dg1</code>~<code>t1dg6</code></li>
-      <li>T2 : 1번(동편, 카운터 A~D, 게이트 247~250) · 2번(서편, 카운터 E~H, 게이트 251~253) — API <code>t2dg1</code>·<code>t2dg2</code></li>
+      <li>데이터 출처 : 인천국제공항공사 (공식 발표 자료, 매일 17시 갱신)</li>
+      <li>승객 수치는 예고 데이터 기반 예상값으로, 실제와 차이가 있을 수 있습니다.</li>
+      <li>T1 6번 출국장은 교통약자 우대 출구로 집계에서 제외됩니다.</li>
+      <li>T1 1번 출국장은 2025.10.1부터 운영을 시작했습니다.</li>
     </ul>
   </div>
 
@@ -757,7 +723,12 @@
   var CONFIG = { displayModeBar: false, responsive: true };
 
   function hourTicks() {
-    return P.today_hourly.hours.map(function(h) { return h + '시'; });
+    // '08~09' 형태로 통일 (페이지 다른 곳과 일관)
+    return P.today_hourly.hours.map(function(h) {
+      var n = parseInt(h, 10);
+      var nh = (n + 1) % 24;
+      return h + '~' + (nh < 10 ? '0' + nh : '' + nh);
+    });
   }
 
   // 시간대별 T1 — 내일 예상(실선) vs MTD 평균(점선)
@@ -776,11 +747,11 @@
       type: 'scatter', mode: 'lines',
       line: { color: '#1F6FEB', width: 2, dash: 'dot' },
       opacity: 0.7,
-      name: 'MTD 평균',
+      name: '이번 달 평균',
     },
   ], Object.assign({}, COMMON_LAYOUT, {
-    yaxis: { title: { text: '객수', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
-    xaxis: { tickfont: { size: 10 } },
+    yaxis: { title: { text: '객수(명)', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
+    xaxis: { tickfont: { size: 9 }, tickangle: -45 },
   }), CONFIG);
 
   // 시간대별 T2 — 내일 예상(실선) vs MTD 평균(점선)
@@ -799,11 +770,11 @@
       type: 'scatter', mode: 'lines',
       line: { color: '#C26420', width: 2, dash: 'dot' },
       opacity: 0.7,
-      name: 'MTD 평균',
+      name: '이번 달 평균',
     },
   ], Object.assign({}, COMMON_LAYOUT, {
-    yaxis: { title: { text: '객수', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
-    xaxis: { tickfont: { size: 10 } },
+    yaxis: { title: { text: '객수(명)', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
+    xaxis: { tickfont: { size: 9 }, tickangle: -45 },
   }), CONFIG);
 
   // ===== 출국장 평면도 =====
@@ -827,34 +798,44 @@
     return 'rgba(140,0,35,' + alpha.toFixed(3) + ')';
   }
 
-  // hour='all'이면 24시간 합계, 아니면 해당 시간대만 (MTD도 같은 비율로 스케일)
-  function paintMap(hour) {
+  // 시간대 그룹 정의 (06~12 오전 / 12~18 오후 / 18~22 저녁 / 22~06 심야)
+  var PERIOD_HOURS = {
+    morning: [6,7,8,9,10,11],
+    afternoon: [12,13,14,15,16,17],
+    evening: [18,19,20,21],
+    night: [22,23,0,1,2,3,4,5],
+  };
+
+  function _sumHours(arr, hours) {
+    if (!hours) {
+      var s = 0; for (var i = 0; i < (arr||[]).length; i++) s += arr[i] || 0; return s;
+    }
+    var s = 0;
+    for (var i = 0; i < hours.length; i++) s += (arr||[])[hours[i]] || 0;
+    return s;
+  }
+
+  // period='all'이면 24시간 합계, 아니면 해당 시간대 그룹 합산 (MTD도 그룹 비율로 스케일)
+  function paintMap(period) {
     var perGate = P.tomorrow_per_gate || {};
     var todayPerGate = P.today_per_gate || {};
     var gateMtd = P.gate_mtd || {};
-    // 시간대 셀렉터가 'all'이 아니면 MTD를 같은 시간대 비율로 스케일.
-    // 일평균(24h) → 1h 환산이라 단순히 1/24만 하면 평균 분포 가정 — 더 정확하려면
-    // 오늘의 시간 분포를 반영. 여기선 오늘 perGate 시간 분포를 일평균 비율로 사용.
+    var hours = PERIOD_HOURS[period] || null;  // null = 전체
+
     var values = {}, mtdValues = {};
     var t1Sum = 0, t2Sum = 0, max = 0;
     MAP_KEYS.forEach(function(k) {
       var arr = perGate[k] || [];
-      var v;
-      if (hour === 'all') {
-        v = 0; for (var i = 0; i < arr.length; i++) v += arr[i] || 0;
-      } else {
-        v = arr[hour] || 0;
-      }
+      var v = _sumHours(arr, hours);
       values[k] = v;
-      // MTD: 시간대 'all'이면 일평균 그대로, 시간대 선택이면 오늘의 해당 시간 비율로 스케일
+      // MTD: 전체면 일평균 그대로, 시간대 그룹이면 오늘의 동일 그룹 비율로 스케일
       var mtdDay = gateMtd[k] || 0;
       var mtdH = mtdDay;
-      if (hour !== 'all' && mtdDay > 0) {
+      if (hours && mtdDay > 0) {
         var todayArr = todayPerGate[k] || [];
-        var todayDaySum = 0;
-        for (var j = 0; j < todayArr.length; j++) todayDaySum += todayArr[j] || 0;
+        var todayDaySum = _sumHours(todayArr, null);
         if (todayDaySum > 0) {
-          var ratio = (todayArr[hour] || 0) / todayDaySum;
+          var ratio = _sumHours(todayArr, hours) / todayDaySum;
           mtdH = Math.round(mtdDay * ratio);
         } else {
           mtdH = 0;
@@ -932,15 +913,15 @@
     if (legendMax) legendMax.textContent = max > 0 ? max.toLocaleString() : '—';
   }
 
-  var mapHour = 'all';
+  var mapPeriod = 'all';
   var hourSelect = document.getElementById('map-hour-select');
   if (hourSelect) {
     hourSelect.addEventListener('change', function() {
-      mapHour = hourSelect.value === 'all' ? 'all' : parseInt(hourSelect.value, 10);
-      paintMap(mapHour);
+      mapPeriod = hourSelect.value;
+      paintMap(mapPeriod);
     });
   }
-  paintMap(mapHour);
+  paintMap(mapPeriod);
 
 })();
 </script>
