@@ -668,32 +668,7 @@
     </p>
   </section>
 
-  <!-- 시간대별 차트 -->
-  <section>
-    <h2 class="section-title">시간대별 출국장 이용객수</h2>
-    <div class="chart-grid">
-      <div class="chart-card">
-        <h3>T1 (제1터미널) — 출국장 D1~D6</h3>
-        <div id="chart-hourly-t1" class="chart"></div>
-      </div>
-      <div class="chart-card">
-        <h3>T2 (제2터미널) — 출국장 D1·D2</h3>
-        <div id="chart-hourly-t2" class="chart"></div>
-      </div>
-    </div>
-    <p class="section-note">실선 = 오늘 (D-0) · 점선 = 내일 예상 (D+1) · 단위 : 명</p>
-  </section>
-
-  <!-- 일자별 추이 -->
-  <section>
-    <h2 class="section-title">일자별 추이 (최근 30일)</h2>
-    <div class="chart-card">
-      <div id="chart-daily" class="chart tall"></div>
-    </div>
-    <p class="section-note">노란 배경 = 미래 예상 (D+1·D+2) · 빨강 = 주말. D+2는 airport.kr 발표 데이터.</p>
-  </section>
-
-  <!-- 일자별 표 -->
+  <!-- 일자별 표 (평면도 다음) -->
   <section>
     <h2 class="section-title">일자별 표</h2>
     <div class="table-wrap">
@@ -737,6 +712,22 @@
     </div>
   </section>
 
+  <!-- 시간대별 차트 -->
+  <section>
+    <h2 class="section-title">시간대별 출국장 이용객수</h2>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>T1</h3>
+        <div id="chart-hourly-t1" class="chart"></div>
+      </div>
+      <div class="chart-card">
+        <h3>T2</h3>
+        <div id="chart-hourly-t2" class="chart"></div>
+      </div>
+    </div>
+    <p class="section-note">실선 = 내일 예상 (D+1) · 점선 = 이번 달 일평균 (MTD) · 단위 : 명</p>
+  </section>
+
   <div class="footnote">
     <b>데이터 출처</b>
     <ul>
@@ -778,44 +769,46 @@
     return P.today_hourly.hours.map(function(h) { return h + '시'; });
   }
 
-  // 시간대별 T1
+  // 시간대별 T1 — 내일 예상(실선) vs MTD 평균(점선)
   Plotly.newPlot('chart-hourly-t1', [
     {
       x: hourTicks(),
-      y: P.today_hourly.T1,
+      y: P.tomorrow_hourly.T1,
       type: 'scatter', mode: 'lines+markers',
       line: { color: '#1F6FEB', width: 2.5 },
       marker: { size: 5 },
-      name: '오늘 T1',
+      name: '내일 예상',
     },
     {
       x: hourTicks(),
-      y: P.tomorrow_hourly.T1,
+      y: P.mtd_hourly.T1,
       type: 'scatter', mode: 'lines',
       line: { color: '#1F6FEB', width: 2, dash: 'dot' },
-      name: '내일 T1',
+      opacity: 0.7,
+      name: 'MTD 평균',
     },
   ], Object.assign({}, COMMON_LAYOUT, {
     yaxis: { title: { text: '객수', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
     xaxis: { tickfont: { size: 10 } },
   }), CONFIG);
 
-  // 시간대별 T2
+  // 시간대별 T2 — 내일 예상(실선) vs MTD 평균(점선)
   Plotly.newPlot('chart-hourly-t2', [
     {
       x: hourTicks(),
-      y: P.today_hourly.T2,
+      y: P.tomorrow_hourly.T2,
       type: 'scatter', mode: 'lines+markers',
       line: { color: '#C26420', width: 2.5 },
       marker: { size: 5 },
-      name: '오늘 T2',
+      name: '내일 예상',
     },
     {
       x: hourTicks(),
-      y: P.tomorrow_hourly.T2,
+      y: P.mtd_hourly.T2,
       type: 'scatter', mode: 'lines',
       line: { color: '#C26420', width: 2, dash: 'dot' },
-      name: '내일 T2',
+      opacity: 0.7,
+      name: 'MTD 평균',
     },
   ], Object.assign({}, COMMON_LAYOUT, {
     yaxis: { title: { text: '객수', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
@@ -958,38 +951,6 @@
   }
   paintMap(mapHour);
 
-  // 일자별 추이
-  var dc = P.daily_chart;
-  var futureShapes = [];
-  for (var i = 0; i < dc.is_future.length; i++) {
-    if (dc.is_future[i]) {
-      futureShapes.push({
-        type: 'rect', xref: 'x', yref: 'paper',
-        x0: i - 0.5, x1: i + 0.5, y0: 0, y1: 1,
-        fillcolor: 'rgba(255,200,40,0.10)', line: { width: 0 }, layer: 'below',
-      });
-    }
-  }
-  if (dc.today_idx >= 0) {
-    futureShapes.push({
-      type: 'line', xref: 'x', yref: 'paper',
-      x0: dc.today_idx, x1: dc.today_idx, y0: 0, y1: 1,
-      line: { color: '#64748B', width: 1, dash: 'dot' },
-    });
-  }
-  Plotly.newPlot('chart-daily', [
-    { x: dc.dates, y: dc.T1, name: 'T1', type: 'scatter', mode: 'lines+markers',
-      line: { color: '#1F6FEB', width: 2 }, marker: { size: 5 } },
-    { x: dc.dates, y: dc.T2, name: 'T2', type: 'scatter', mode: 'lines+markers',
-      line: { color: '#C26420', width: 2 }, marker: { size: 5 } },
-  ], Object.assign({}, COMMON_LAYOUT, {
-    yaxis: { title: { text: '객수', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
-    xaxis: {
-      tickfont: { size: 10 },
-      tickvals: dc.dates.filter(function(_, i) { return i % 3 === 0; }),
-    },
-    shapes: futureShapes,
-  }), CONFIG);
 })();
 </script>
 

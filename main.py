@@ -20,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 
 from icn_utils.aggregator import (
     WEEKDAY_KR, daily_totals, fmt_peak_hour, hourly_per_gate, hourly_t1_t2,
-    kpi_summary, mtd_per_gate, mtd_summary,
+    kpi_summary, mtd_hourly_t1_t2, mtd_per_gate, mtd_summary,
 )
 from icn_utils.data_loader import (
     fetch_live, list_available_dates, load_day, load_range,
@@ -137,9 +137,10 @@ def build_payload(service_key: str | None) -> dict:
             (kpi["tomorrow"]["T2"] - mtd["T2"]) / mtd["T2"] * 100, 1
         )
 
-    # 시간대별 차트 (T1/T2 별 패널, 오늘 vs 내일)
+    # 시간대별 차트 (T1/T2 별 패널, 내일 vs MTD 평균)
     today_hourly = hourly_t1_t2(today_df)
     tomorrow_hourly = hourly_t1_t2(tomorrow_df)
+    mtd_hourly = mtd_hourly_t1_t2(daily_map, today)
 
     # 출국장별 시간대 분포 (오늘 기준)
     today_per_gate = hourly_per_gate(today_df)
@@ -176,17 +177,6 @@ def build_payload(service_key: str | None) -> dict:
             "source": row["source"],
         })
 
-    # 차트용 시리즈 (T1·T2만, 합계 라인 제거)
-    daily_chart = {
-        "dates": [r["label"] for r in table_rows],
-        "ymds": [r["ymd"] for r in table_rows],
-        "T1": [r["T1"] for r in table_rows],
-        "T2": [r["T2"] for r in table_rows],
-        "is_future": [r["is_future"] for r in table_rows],
-        "is_red": [r["is_red"] for r in table_rows],
-        "today_idx": next((i for i, r in enumerate(table_rows) if r["is_today"]), -1),
-    }
-
     fetched_at = datetime.now(KST)
     payload = {
         "today": {
@@ -211,9 +201,9 @@ def build_payload(service_key: str | None) -> dict:
         "delta_pct_T2": delta_pct_T2,
         "today_hourly": today_hourly,
         "tomorrow_hourly": tomorrow_hourly,
+        "mtd_hourly": mtd_hourly,
         "today_per_gate": today_per_gate,
         "tomorrow_per_gate": tomorrow_per_gate,
-        "daily_chart": daily_chart,
         "table_rows": table_rows,
         "fetched_at": fetched_at.strftime("%Y-%m-%d %H:%M"),
         "data_dates_count": sum(

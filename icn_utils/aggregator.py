@@ -116,6 +116,41 @@ def kpi_summary(today_df: pd.DataFrame, tomorrow_df: pd.DataFrame) -> dict:
     return {"today": one(today_df), "tomorrow": one(tomorrow_df)}
 
 
+def mtd_hourly_t1_t2(daily_map: dict[str, tuple[pd.DataFrame, str]], today: date) -> dict:
+    """이번 달 1일 ~ 오늘까지 시간대별 평균 (T1·T2 합계).
+
+    Returns: {"hours": [...], "T1": [...], "T2": [...]}
+    """
+    first = today.replace(day=1)
+    sums_t1 = [0] * 24
+    sums_t2 = [0] * 24
+    n = 0
+    for ymd, (df, src) in daily_map.items():
+        try:
+            d = datetime.strptime(ymd, "%Y%m%d").date()
+        except ValueError:
+            continue
+        if d < first or d > today:
+            continue
+        if src not in ("d0", "live", "web"):
+            continue
+        if df is None or df.empty:
+            continue
+        h = hourly_t1_t2(df)
+        for i in range(24):
+            sums_t1[i] += h["T1"][i]
+            sums_t2[i] += h["T2"][i]
+        n += 1
+    if n == 0:
+        return {"hours": HOUR_LABELS, "T1": [0] * 24, "T2": [0] * 24, "days": 0}
+    return {
+        "hours": HOUR_LABELS,
+        "T1": [round(sums_t1[i] / n) for i in range(24)],
+        "T2": [round(sums_t2[i] / n) for i in range(24)],
+        "days": n,
+    }
+
+
 def mtd_per_gate(daily_map: dict[str, tuple[pd.DataFrame, str]], today: date) -> dict:
     """이번 달 1일 ~ 오늘(D-0)까지 d0/web 기준 8개 출국장 각각의 일평균.
 
