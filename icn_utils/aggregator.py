@@ -60,51 +60,59 @@ def hourly_per_gate(df: pd.DataFrame) -> dict[str, list[int]]:
 
 
 def daily_totals(daily_map: dict[str, tuple[pd.DataFrame, str]]) -> pd.DataFrame:
-    """일별 T1/T2/합계/피크시간/소스(d0/d1).
+    """일별 T1/T2/터미널별 피크/소스(d0/d1).
 
-    Returns: DataFrame[YYYYMMDD, T1, T2, total, peak_hour, peak_total, source]
+    Returns: DataFrame[YYYYMMDD, T1, T2,
+                        peak_hour_T1, peak_total_T1,
+                        peak_hour_T2, peak_total_T2, source]
     """
     rows = []
     for ymd, (df, src) in sorted(daily_map.items()):
         if df is None or df.empty:
-            rows.append(
-                {"YYYYMMDD": ymd, "T1": 0, "T2": 0, "total": 0,
-                 "peak_hour": None, "peak_total": 0, "source": src}
-            )
+            rows.append({"YYYYMMDD": ymd, "T1": 0, "T2": 0,
+                         "peak_hour_T1": None, "peak_total_T1": 0,
+                         "peak_hour_T2": None, "peak_total_T2": 0,
+                         "source": src})
             continue
         t1 = int(df[T1_TOTAL].sum())
         t2 = int(df[T2_TOTAL].sum())
-        # 피크: 시간대별 T1+T2 합 최대
         work = df.copy()
         work["__h"] = work["atime"].map(_hour_from_atime)
         work = work[work["__h"].between(0, 23)]
-        work["__total"] = work[T1_TOTAL] + work[T2_TOTAL]
-        g = work.groupby("__h")["__total"].sum()
-        peak_hour = int(g.idxmax()) if len(g) else None
-        peak_total = int(g.max()) if len(g) else 0
+        g_t1 = work.groupby("__h")[T1_TOTAL].sum() if len(work) else pd.Series(dtype=float)
+        g_t2 = work.groupby("__h")[T2_TOTAL].sum() if len(work) else pd.Series(dtype=float)
         rows.append({
-            "YYYYMMDD": ymd, "T1": t1, "T2": t2, "total": t1 + t2,
-            "peak_hour": peak_hour, "peak_total": peak_total, "source": src,
+            "YYYYMMDD": ymd, "T1": t1, "T2": t2,
+            "peak_hour_T1": int(g_t1.idxmax()) if len(g_t1) else None,
+            "peak_total_T1": int(g_t1.max()) if len(g_t1) else 0,
+            "peak_hour_T2": int(g_t2.idxmax()) if len(g_t2) else None,
+            "peak_total_T2": int(g_t2.max()) if len(g_t2) else 0,
+            "source": src,
         })
     return pd.DataFrame(rows)
 
 
 def kpi_summary(today_df: pd.DataFrame, tomorrow_df: pd.DataFrame) -> dict:
-    """헤더 KPI: 오늘 총객수·내일 예상·오늘 피크·내일 피크."""
+    """헤더 KPI — T1·T2 각각 일합·피크 시간대·피크 객수."""
     def one(df):
         if df is None or df.empty:
-            return {"total": 0, "T1": 0, "T2": 0, "peak_hour": None, "peak_total": 0}
+            return {"T1": 0, "T2": 0,
+                    "peak_hour_T1": None, "peak_total_T1": 0,
+                    "peak_hour_T2": None, "peak_total_T2": 0}
         t1 = int(df[T1_TOTAL].sum())
         t2 = int(df[T2_TOTAL].sum())
         work = df.copy()
         work["__h"] = work["atime"].map(_hour_from_atime)
         work = work[work["__h"].between(0, 23)]
-        work["__total"] = work[T1_TOTAL] + work[T2_TOTAL]
-        g = work.groupby("__h")["__total"].sum()
-        peak_hour = int(g.idxmax()) if len(g) else None
-        peak_total = int(g.max()) if len(g) else 0
-        return {"total": t1 + t2, "T1": t1, "T2": t2,
-                "peak_hour": peak_hour, "peak_total": peak_total}
+        g_t1 = work.groupby("__h")[T1_TOTAL].sum() if len(work) else pd.Series(dtype=float)
+        g_t2 = work.groupby("__h")[T2_TOTAL].sum() if len(work) else pd.Series(dtype=float)
+        return {
+            "T1": t1, "T2": t2,
+            "peak_hour_T1": int(g_t1.idxmax()) if len(g_t1) else None,
+            "peak_total_T1": int(g_t1.max()) if len(g_t1) else 0,
+            "peak_hour_T2": int(g_t2.idxmax()) if len(g_t2) else None,
+            "peak_total_T2": int(g_t2.max()) if len(g_t2) else 0,
+        }
     return {"today": one(today_df), "tomorrow": one(tomorrow_df)}
 
 

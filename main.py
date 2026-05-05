@@ -124,10 +124,15 @@ def build_payload(service_key: str | None) -> dict:
 
     # MTD 평균 (이번달 1일 ~ 어제, d0 실측)
     mtd = mtd_summary(daily_map, today)
-    delta_pct = None
-    if mtd["total"] > 0 and kpi["tomorrow"]["total"] > 0:
-        delta_pct = round(
-            (kpi["tomorrow"]["total"] - mtd["total"]) / mtd["total"] * 100, 1
+    delta_pct_T1 = None
+    delta_pct_T2 = None
+    if mtd["T1"] > 0 and kpi["tomorrow"]["T1"] > 0:
+        delta_pct_T1 = round(
+            (kpi["tomorrow"]["T1"] - mtd["T1"]) / mtd["T1"] * 100, 1
+        )
+    if mtd["T2"] > 0 and kpi["tomorrow"]["T2"] > 0:
+        delta_pct_T2 = round(
+            (kpi["tomorrow"]["T2"] - mtd["T2"]) / mtd["T2"] * 100, 1
         )
 
     # 시간대별 차트 (T1/T2 별 패널, 오늘 vs 내일)
@@ -162,19 +167,19 @@ def build_payload(service_key: str | None) -> dict:
             "is_future": is_future,
             "T1": int(row["T1"]),
             "T2": int(row["T2"]),
-            "total": int(row["total"]),
-            "peak_hour": fmt_peak_hour(row["peak_hour"]),
-            "peak_total": int(row["peak_total"]),
+            "peak_hour_T1": fmt_peak_hour(row["peak_hour_T1"]),
+            "peak_total_T1": int(row["peak_total_T1"]),
+            "peak_hour_T2": fmt_peak_hour(row["peak_hour_T2"]),
+            "peak_total_T2": int(row["peak_total_T2"]),
             "source": row["source"],
         })
 
-    # 차트용 시리즈
+    # 차트용 시리즈 (T1·T2만, 합계 라인 제거)
     daily_chart = {
         "dates": [r["label"] for r in table_rows],
         "ymds": [r["ymd"] for r in table_rows],
         "T1": [r["T1"] for r in table_rows],
         "T2": [r["T2"] for r in table_rows],
-        "total": [r["total"] for r in table_rows],
         "is_future": [r["is_future"] for r in table_rows],
         "is_red": [r["is_red"] for r in table_rows],
         "today_idx": next((i for i, r in enumerate(table_rows) if r["is_today"]), -1),
@@ -186,18 +191,21 @@ def build_payload(service_key: str | None) -> dict:
             "date": today.strftime("%Y-%m-%d"),
             "weekday": WEEKDAY_KR[today.weekday()],
             "kpi": kpi["today"],
-            "kpi_peak_hour_label": fmt_peak_hour(kpi["today"]["peak_hour"]),
+            "peak_hour_T1_label": fmt_peak_hour(kpi["today"]["peak_hour_T1"]),
+            "peak_hour_T2_label": fmt_peak_hour(kpi["today"]["peak_hour_T2"]),
             "source": today_src,
         },
         "tomorrow": {
             "date": tomorrow.strftime("%Y-%m-%d"),
             "weekday": WEEKDAY_KR[tomorrow.weekday()],
             "kpi": kpi["tomorrow"],
-            "kpi_peak_hour_label": fmt_peak_hour(kpi["tomorrow"]["peak_hour"]),
+            "peak_hour_T1_label": fmt_peak_hour(kpi["tomorrow"]["peak_hour_T1"]),
+            "peak_hour_T2_label": fmt_peak_hour(kpi["tomorrow"]["peak_hour_T2"]),
             "source": tomorrow_src,
         },
         "mtd": mtd,
-        "delta_pct": delta_pct,
+        "delta_pct_T1": delta_pct_T1,
+        "delta_pct_T2": delta_pct_T2,
         "today_hourly": today_hourly,
         "tomorrow_hourly": tomorrow_hourly,
         "today_per_gate": today_per_gate,

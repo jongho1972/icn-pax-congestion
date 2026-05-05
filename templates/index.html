@@ -152,10 +152,10 @@
     .meta { color: var(--text-light); font-size: 12px; line-height: 1.5; }
     .meta b { color: var(--text-mid); font-weight: 600; }
 
-    /* KPI 카드 */
+    /* KPI 카드 — T1·T2 각각 */
     .kpi-grid {
       display: grid;
-      grid-template-columns: 1.6fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 14px;
       margin-bottom: 12px;
     }
@@ -169,9 +169,18 @@
     }
     .kpi-card::before {
       content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
-      background: var(--gold);
+      background: var(--t1);
     }
-    .kpi-card.kpi-mtd::before { background: var(--t1); }
+    .kpi-card.kpi-t2::before { background: var(--t2); }
+    .kpi-card .kpi-term {
+      display: inline-block; padding: 2px 9px; border-radius: 6px;
+      font-size: 11px; font-weight: 800; letter-spacing: 0.3px;
+      background: var(--t1-soft); color: var(--t1);
+      margin-right: 8px; vertical-align: 1px;
+    }
+    .kpi-card.kpi-t2 .kpi-term {
+      background: var(--t2-soft); color: var(--t2);
+    }
     .kpi-label {
       font-size: 11px; color: var(--text-light); font-weight: 700;
       letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 6px;
@@ -194,8 +203,18 @@
       letter-spacing: -0.2px;
     }
     .kpi-delta.pos { background: rgba(140,0,35,0.10); color: var(--crimson); }
-    .kpi-delta.neg { background: rgba(31,111,235,0.10); color: var(--t1); }
+    .kpi-delta.neg { background: #EEF4FF; color: #2A52BE; }
     .kpi-delta.flat { background: #F2F4F7; color: var(--text-mid); }
+    .kpi-baseline {
+      margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border);
+      font-size: 12px; color: var(--text-mid);
+      display: flex; flex-wrap: wrap; gap: 4px 12px;
+    }
+    .kpi-baseline b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .kpi-baseline .lbl {
+      font-size: 10px; font-weight: 700; color: var(--text-light);
+      text-transform: uppercase; letter-spacing: 0.4px; margin-right: 4px;
+    }
     .kpi-delta-base {
       font-size: 11px; font-weight: 600; opacity: 0.75; margin-left: 2px;
     }
@@ -401,58 +420,65 @@
     </div>
   </div>
 
-  <!-- KPI : D+1 hero + MTD 평균 -->
+  <!-- KPI : T1 D+1 + T2 D+1 (각각 MTD 평균 baseline 포함) -->
   <div class="kpi-grid">
-    <!-- 내일 예상 (D+1) — hero -->
-    <div class="kpi-card kpi-hero">
-      <div class="kpi-label">내일 예상 · D+1</div>
+    <!-- T1 내일 예상 -->
+    <div class="kpi-card kpi-hero kpi-t1">
+      <div class="kpi-label"><span class="kpi-term">T1</span>내일 예상 · D+1</div>
       <div class="kpi-date">{{ p.tomorrow.date }} ({{ p.tomorrow.weekday }})</div>
-      {% if p.tomorrow.kpi.total > 0 %}
+      {% if p.tomorrow.kpi.T1 > 0 %}
         <div class="kpi-main-row">
-          <div class="kpi-main">{{ "{:,}".format(p.tomorrow.kpi.total) }}<span class="unit">명</span></div>
-          {% if p.delta_pct is not none %}
-            {% set dcls = 'pos' if p.delta_pct > 0 else ('neg' if p.delta_pct < 0 else 'flat') %}
-            {% set darr = '▲' if p.delta_pct > 0 else ('▼' if p.delta_pct < 0 else '―') %}
-            <div class="kpi-delta {{ dcls }}" title="MTD 일평균 {{ '{:,}'.format(p.mtd.total) }}명 대비">
-              {{ darr }} {{ '{:+.1f}'.format(p.delta_pct) }}%
+          <div class="kpi-main">{{ "{:,}".format(p.tomorrow.kpi.T1) }}<span class="unit">명</span></div>
+          {% if p.delta_pct_T1 is not none %}
+            {% set dcls = 'pos' if p.delta_pct_T1 > 0 else ('neg' if p.delta_pct_T1 < 0 else 'flat') %}
+            {% set darr = '▲' if p.delta_pct_T1 > 0 else ('▼' if p.delta_pct_T1 < 0 else '―') %}
+            <div class="kpi-delta {{ dcls }}" title="T1 MTD 일평균 {{ '{:,}'.format(p.mtd.T1) }}명 대비">
+              {{ darr }} {{ '{:+.1f}'.format(p.delta_pct_T1) }}%
               <span class="kpi-delta-base">vs 이번 달 평균</span>
             </div>
           {% endif %}
         </div>
-        <div class="kpi-sub">
-          <span class="seg t1">T1 {{ "{:,}".format(p.tomorrow.kpi.T1) }}</span>
-          <span class="seg t2">T2 {{ "{:,}".format(p.tomorrow.kpi.T2) }}</span>
-          <span class="seg">피크 {{ p.tomorrow.kpi_peak_hour_label }} · {{ "{:,}".format(p.tomorrow.kpi.peak_total) }}명</span>
+        <div class="kpi-baseline">
+          <span><span class="lbl">MTD</span><b>{{ "{:,}".format(p.mtd.T1) if p.mtd.T1 > 0 else '—' }}</b>명/일</span>
+          <span><span class="lbl">피크</span><b>{{ p.tomorrow.peak_hour_T1_label }}</b> · <b>{{ "{:,}".format(p.tomorrow.kpi.peak_total_T1) }}</b>명</span>
         </div>
       {% else %}
         <div class="kpi-empty">D+1 예측 미생성 — 보통 23:30 KST 갱신</div>
       {% endif %}
     </div>
 
-    <!-- 이번 달 일평균 (MTD) -->
-    <div class="kpi-card kpi-mtd">
-      <div class="kpi-label">이번 달 일평균 · MTD</div>
-      <div class="kpi-date">{{ p.mtd.period_label }}{% if p.mtd.days > 0 %} · {{ p.mtd.days }}일 기준{% endif %}</div>
-      {% if p.mtd.total > 0 %}
-        <div class="kpi-main">{{ "{:,}".format(p.mtd.total) }}<span class="unit">명/일</span></div>
-        <div class="kpi-sub">
-          <span class="seg t1">T1 {{ "{:,}".format(p.mtd.T1) }}</span>
-          <span class="seg t2">T2 {{ "{:,}".format(p.mtd.T2) }}</span>
+    <!-- T2 내일 예상 -->
+    <div class="kpi-card kpi-hero kpi-t2">
+      <div class="kpi-label"><span class="kpi-term">T2</span>내일 예상 · D+1</div>
+      <div class="kpi-date">{{ p.tomorrow.date }} ({{ p.tomorrow.weekday }})</div>
+      {% if p.tomorrow.kpi.T2 > 0 %}
+        <div class="kpi-main-row">
+          <div class="kpi-main">{{ "{:,}".format(p.tomorrow.kpi.T2) }}<span class="unit">명</span></div>
+          {% if p.delta_pct_T2 is not none %}
+            {% set dcls = 'pos' if p.delta_pct_T2 > 0 else ('neg' if p.delta_pct_T2 < 0 else 'flat') %}
+            {% set darr = '▲' if p.delta_pct_T2 > 0 else ('▼' if p.delta_pct_T2 < 0 else '―') %}
+            <div class="kpi-delta {{ dcls }}" title="T2 MTD 일평균 {{ '{:,}'.format(p.mtd.T2) }}명 대비">
+              {{ darr }} {{ '{:+.1f}'.format(p.delta_pct_T2) }}%
+              <span class="kpi-delta-base">vs 이번 달 평균</span>
+            </div>
+          {% endif %}
+        </div>
+        <div class="kpi-baseline">
+          <span><span class="lbl">MTD</span><b>{{ "{:,}".format(p.mtd.T2) if p.mtd.T2 > 0 else '—' }}</b>명/일</span>
+          <span><span class="lbl">피크</span><b>{{ p.tomorrow.peak_hour_T2_label }}</b> · <b>{{ "{:,}".format(p.tomorrow.kpi.peak_total_T2) }}</b>명</span>
         </div>
       {% else %}
-        <div class="kpi-empty">월 초 — 평균 산출 데이터 부족</div>
+        <div class="kpi-empty">D+1 예측 미생성 — 보통 23:30 KST 갱신</div>
       {% endif %}
     </div>
   </div>
 
-  <!-- 오늘(D-0) 보조 strip -->
+  <!-- 오늘(D-0) 보조 strip — T1·T2 분리 -->
   <div class="kpi-today-strip">
     <span class="ts-label">오늘 D-0</span>
     <span>{{ p.today.date }} ({{ p.today.weekday }})</span>
-    <span class="ts-total">총 <b>{{ "{:,}".format(p.today.kpi.total) }}</b>명</span>
-    <span class="seg t1">T1 {{ "{:,}".format(p.today.kpi.T1) }}</span>
-    <span class="seg t2">T2 {{ "{:,}".format(p.today.kpi.T2) }}</span>
-    <span class="ts-peak">피크 {{ p.today.kpi_peak_hour_label }} · {{ "{:,}".format(p.today.kpi.peak_total) }}명</span>
+    <span class="seg t1">T1 <b>{{ "{:,}".format(p.today.kpi.T1) }}</b>명 · 피크 {{ p.today.peak_hour_T1_label }} · {{ "{:,}".format(p.today.kpi.peak_total_T1) }}명</span>
+    <span class="seg t2">T2 <b>{{ "{:,}".format(p.today.kpi.T2) }}</b>명 · 피크 {{ p.today.peak_hour_T2_label }} · {{ "{:,}".format(p.today.kpi.peak_total_T2) }}명</span>
   </div>
 
   <!-- 출국장 평면도 (공간 분포) -->
@@ -493,7 +519,7 @@
           <option value="23">23~24시</option>
         </select>
       </label>
-      <div class="map-stat" id="map-stat">합계 <b>—</b>명 · 최대 <b>—</b>명</div>
+      <div class="map-stat" id="map-stat">T1 <b>—</b>명 · T2 <b>—</b>명 · 최대 <b>—</b>명</div>
     </div>
 
     <!-- T1 도면 -->
@@ -639,10 +665,11 @@
             <th class="label">날짜</th>
             <th class="dow">요일</th>
             <th>T1</th>
+            <th>T1 피크 시간</th>
+            <th>T1 피크 객수</th>
             <th>T2</th>
-            <th>합계</th>
-            <th>피크 시간대</th>
-            <th>피크 객수</th>
+            <th>T2 피크 시간</th>
+            <th>T2 피크 객수</th>
             <th>출처</th>
           </tr>
         </thead>
@@ -652,10 +679,11 @@
             <td class="label{% if r.is_red %} red{% endif %}">{{ r.label }}</td>
             <td class="dow{% if r.is_red %} red{% endif %}">{{ r.weekday }}</td>
             <td class="t1">{% if r.T1 > 0 %}{{ "{:,}".format(r.T1) }}{% else %}<span class="dash">—</span>{% endif %}</td>
+            <td class="t1">{{ r.peak_hour_T1 }}</td>
+            <td class="t1">{% if r.peak_total_T1 > 0 %}{{ "{:,}".format(r.peak_total_T1) }}{% else %}<span class="dash">—</span>{% endif %}</td>
             <td class="t2">{% if r.T2 > 0 %}{{ "{:,}".format(r.T2) }}{% else %}<span class="dash">—</span>{% endif %}</td>
-            <td>{% if r.total > 0 %}{{ "{:,}".format(r.total) }}{% else %}<span class="dash">—</span>{% endif %}</td>
-            <td>{{ r.peak_hour }}</td>
-            <td>{% if r.peak_total > 0 %}{{ "{:,}".format(r.peak_total) }}{% else %}<span class="dash">—</span>{% endif %}</td>
+            <td class="t2">{{ r.peak_hour_T2 }}</td>
+            <td class="t2">{% if r.peak_total_T2 > 0 %}{{ "{:,}".format(r.peak_total_T2) }}{% else %}<span class="dash">—</span>{% endif %}</td>
             <td>
               {% if r.source == 'd0' %}<span class="src-pill">실측</span>
               {% elif r.source == 'd1' %}<span class="src-pill d1">예측</span>
@@ -775,8 +803,7 @@
   function paintMap(day, hour) {
     var perGate = day === 'tomorrow' ? P.tomorrow_per_gate : P.today_per_gate;
     var values = {};
-    var sum = 0;
-    var max = 0;
+    var t1Sum = 0, t2Sum = 0, max = 0;
     MAP_KEYS.forEach(function(k) {
       var arr = (perGate && perGate[k]) || [];
       var v;
@@ -787,9 +814,10 @@
         v = arr[hour] || 0;
       }
       values[k] = v;
-      sum += v;
+      if (k.indexOf('t1') === 0) t1Sum += v; else t2Sum += v;
       if (v > max) max = v;
     });
+    var sum = t1Sum + t2Sum;
 
     MAP_KEYS.forEach(function(k) {
       var v = values[k];
@@ -812,7 +840,9 @@
     var statEl = document.getElementById('map-stat');
     if (statEl) {
       statEl.innerHTML = max > 0
-        ? ('합계 <b>' + sum.toLocaleString() + '</b>명 · 최대 <b>' + max.toLocaleString() + '</b>명')
+        ? ('<span class="seg t1" style="padding:2px 7px;border-radius:5px;background:var(--t1-soft);color:var(--t1);font-weight:600">T1 <b>' + t1Sum.toLocaleString() + '</b>명</span>'
+          + ' <span class="seg t2" style="padding:2px 7px;border-radius:5px;background:var(--t2-soft);color:var(--t2);font-weight:600">T2 <b>' + t2Sum.toLocaleString() + '</b>명</span>'
+          + ' · 최대 <b>' + max.toLocaleString() + '</b>명')
         : '<span style="color:var(--text-light)">데이터 없음 (D+1 예측 미생성 가능)</span>';
     }
     var legendMax = document.getElementById('legend-max');
@@ -865,8 +895,6 @@
       line: { color: '#1F6FEB', width: 2 }, marker: { size: 5 } },
     { x: dc.dates, y: dc.T2, name: 'T2', type: 'scatter', mode: 'lines+markers',
       line: { color: '#C26420', width: 2 }, marker: { size: 5 } },
-    { x: dc.dates, y: dc.total, name: '합계', type: 'scatter', mode: 'lines',
-      line: { color: '#8C0023', width: 1.5, dash: 'dash' } },
   ], Object.assign({}, COMMON_LAYOUT, {
     yaxis: { title: { text: '객수', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
     xaxis: {
