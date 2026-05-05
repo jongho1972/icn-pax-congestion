@@ -158,6 +158,7 @@ def build_payload(service_key: str | None) -> dict:
         except ValueError:
             continue
         is_today = (dt == today)
+        is_tomorrow = (dt == tomorrow)
         is_future = (dt > today)
         wd = dt.weekday()
         is_red = wd >= 5
@@ -167,6 +168,7 @@ def build_payload(service_key: str | None) -> dict:
             "weekday": WEEKDAY_KR[wd],
             "is_red": is_red,
             "is_today": is_today,
+            "is_tomorrow": is_tomorrow,
             "is_future": is_future,
             "T1": int(row["T1"]),
             "T2": int(row["T2"]),
