@@ -646,7 +646,7 @@
 
   <!-- 일자별 표 (평면도 다음) -->
   <section>
-    <h2 class="section-title">일자별 표</h2>
+    <h2 class="section-title">일자별</h2>
     <div class="table-wrap">
       <table class="daily">
         <thead>
@@ -681,7 +681,7 @@
 
   <!-- 시간대별 차트 -->
   <section>
-    <h2 class="section-title">시간대별 출국장 이용객수</h2>
+    <h2 class="section-title">시간대별</h2>
     <div class="chart-grid">
       <div class="chart-card">
         <h3>T1</h3>
@@ -730,6 +730,15 @@
     });
   }
 
+  // T1·T2 차트 y축 동일 범위 — 시각 비교 용이
+  var hourlyMax = 0;
+  ['T1','T2'].forEach(function(k) {
+    [P.tomorrow_hourly[k], P.mtd_hourly[k]].forEach(function(arr) {
+      (arr||[]).forEach(function(v) { if (v > hourlyMax) hourlyMax = v; });
+    });
+  });
+  var sharedYRange = [0, Math.ceil(hourlyMax * 1.1 / 1000) * 1000];
+
   // 시간대별 T1 — 내일 예상(실선) vs MTD 평균(점선)
   Plotly.newPlot('chart-hourly-t1', [
     {
@@ -749,7 +758,7 @@
       name: '이번 달 평균',
     },
   ], Object.assign({}, COMMON_LAYOUT, {
-    yaxis: { title: { text: '객수(명)', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
+    yaxis: { title: { text: '객수(명)', standoff: 8 }, range: sharedYRange, gridcolor: '#EAECF0' },
     xaxis: { tickfont: { size: 9 }, tickangle: -45 },
   }), CONFIG);
 
@@ -772,7 +781,7 @@
       name: '이번 달 평균',
     },
   ], Object.assign({}, COMMON_LAYOUT, {
-    yaxis: { title: { text: '객수(명)', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
+    yaxis: { title: { text: '객수(명)', standoff: 8 }, range: sharedYRange, gridcolor: '#EAECF0' },
     xaxis: { tickfont: { size: 9 }, tickangle: -45 },
   }), CONFIG);
 
