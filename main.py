@@ -180,6 +180,19 @@ def build_payload(service_key: str | None) -> dict:
         })
 
     fetched_at = datetime.now(KST)
+
+    # 활용 데이터 기간 (M/D ~ M/D) — 실제 pkl 있는 날짜 기준
+    avail = [d for d in list_available_dates(str(DAILY_DIR))
+             if d >= DATA_START_DATE.strftime("%Y%m%d")]
+    if avail:
+        try:
+            d_min = datetime.strptime(avail[0], "%Y%m%d").date()
+            d_max = datetime.strptime(avail[-1], "%Y%m%d").date()
+            data_period = f"{d_min.month}/{d_min.day} ~ {d_max.month}/{d_max.day}"
+        except ValueError:
+            data_period = "—"
+    else:
+        data_period = "—"
     payload = {
         "today": {
             "date": today.strftime("%Y-%m-%d"),
@@ -208,10 +221,7 @@ def build_payload(service_key: str | None) -> dict:
         "tomorrow_per_gate": tomorrow_per_gate,
         "table_rows": table_rows,
         "fetched_at": fetched_at.strftime("%Y-%m-%d %H:%M"),
-        "data_dates_count": sum(
-            1 for d in list_available_dates(str(DAILY_DIR))
-            if d >= DATA_START_DATE.strftime("%Y%m%d")
-        ),
+        "data_period": data_period,
     }
 
     _cache_set(cache_key, payload)
