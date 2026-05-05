@@ -171,7 +171,7 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 14px;
-      margin-bottom: 12px;
+      margin-bottom: 30px;
     }
     .kpi-card {
       background: var(--card);
@@ -386,13 +386,24 @@
       fill: #fff; stroke: #8C0023; stroke-width: 1.4;
     }
     .floor-svg .dg-label {
-      font-size: 18px; font-weight: 800; text-anchor: middle;
+      font-size: 13px; font-weight: 800; text-anchor: middle;
       fill: var(--crimson); pointer-events: none;
+      letter-spacing: 0.2px;
     }
     .floor-svg .dg-pax {
-      font-size: 16px; font-weight: 700; text-anchor: middle;
+      font-size: 17px; font-weight: 800; text-anchor: middle;
       font-variant-numeric: tabular-nums; fill: var(--text);
+      pointer-events: none; letter-spacing: -0.3px;
+    }
+    .floor-svg .dg-mtd {
+      font-size: 10px; font-weight: 600; text-anchor: middle;
+      font-variant-numeric: tabular-nums; fill: #909090;
       pointer-events: none;
+    }
+    .floor-svg .dg-delta {
+      font-size: 11px; font-weight: 800; text-anchor: middle;
+      font-variant-numeric: tabular-nums; pointer-events: none;
+      letter-spacing: -0.2px;
     }
     .floor-legend {
       display: flex; align-items: center; gap: 10px;
@@ -489,23 +500,11 @@
     </div>
   </div>
 
-  <!-- 오늘(D-0) 보조 strip — T1·T2 분리 -->
-  <div class="kpi-today-strip">
-    <span class="ts-label">오늘 D-0</span>
-    <span>{{ p.today.date }} ({{ p.today.weekday }})</span>
-    <span class="seg t1">T1 <b>{{ "{:,}".format(p.today.kpi.T1) }}</b>명 · 피크 {{ p.today.peak_hour_T1_label }} · {{ "{:,}".format(p.today.kpi.peak_total_T1) }}명</span>
-    <span class="seg t2">T2 <b>{{ "{:,}".format(p.today.kpi.T2) }}</b>명 · 피크 {{ p.today.peak_hour_T2_label }} · {{ "{:,}".format(p.today.kpi.peak_total_T2) }}명</span>
-  </div>
-
-  <!-- 출국장 평면도 (공간 분포) -->
+  <!-- 출국장별 예상 승객수 (D+1 평면도) -->
   <section>
-    <h2 class="section-title">출국장 평면도 — 시간대별 이용객 분포</h2>
+    <h2 class="section-title">출국장별 예상 승객수 <span style="font-size:13px;font-weight:500;color:var(--text-mid);margin-left:6px">D+1 · {{ p.tomorrow.date }} ({{ p.tomorrow.weekday }})</span></h2>
 
     <div class="map-controls">
-      <div class="map-tabs" role="tablist" aria-label="기준일 선택">
-        <button type="button" class="map-tab" data-day="today" role="tab" aria-selected="false">오늘 (D-0)</button>
-        <button type="button" class="map-tab active" data-day="tomorrow" role="tab" aria-selected="true">내일 (D+1)</button>
-      </div>
       <label class="map-hour">시간대
         <select id="map-hour-select" aria-label="시간대 선택">
           <option value="all">전체 합계</option>
@@ -548,9 +547,11 @@
           <title></title>
           <rect class="dg-rect" x="20" y="320" width="150" height="180" rx="10" ry="10"/>
           <g class="badge" transform="translate(95, 410)">
-            <rect class="badge-bg" x="-46" y="-26" width="92" height="52" rx="8" ry="8"/>
-            <text class="dg-label" x="0" y="-4">6번</text>
-            <text class="dg-pax" x="0" y="18">—</text>
+            <rect class="badge-bg" x="-52" y="-44" width="104" height="88" rx="9" ry="9"/>
+            <text class="dg-label" x="0" y="-26">6번</text>
+            <text class="dg-pax" x="0" y="-2">—</text>
+            <text class="dg-mtd" x="0" y="18">—</text>
+            <text class="dg-delta" x="0" y="34">—</text>
           </g>
         </g>
         <!-- 출국장 5번 (카운터 K·L) -->
@@ -558,9 +559,11 @@
           <title></title>
           <rect class="dg-rect" x="170" y="295" width="140" height="185" rx="10" ry="10"/>
           <g class="badge" transform="translate(240, 387)">
-            <rect class="badge-bg" x="-46" y="-26" width="92" height="52" rx="8" ry="8"/>
-            <text class="dg-label" x="0" y="-4">5번</text>
-            <text class="dg-pax" x="0" y="18">—</text>
+            <rect class="badge-bg" x="-52" y="-44" width="104" height="88" rx="9" ry="9"/>
+            <text class="dg-label" x="0" y="-26">5번</text>
+            <text class="dg-pax" x="0" y="-2">—</text>
+            <text class="dg-mtd" x="0" y="18">—</text>
+            <text class="dg-delta" x="0" y="34">—</text>
           </g>
         </g>
         <!-- 출국장 4번 (카운터 H·J) -->
@@ -568,9 +571,11 @@
           <title></title>
           <rect class="dg-rect" x="310" y="280" width="150" height="185" rx="10" ry="10"/>
           <g class="badge" transform="translate(385, 372)">
-            <rect class="badge-bg" x="-46" y="-26" width="92" height="52" rx="8" ry="8"/>
-            <text class="dg-label" x="0" y="-4">4번</text>
-            <text class="dg-pax" x="0" y="18">—</text>
+            <rect class="badge-bg" x="-52" y="-44" width="104" height="88" rx="9" ry="9"/>
+            <text class="dg-label" x="0" y="-26">4번</text>
+            <text class="dg-pax" x="0" y="-2">—</text>
+            <text class="dg-mtd" x="0" y="18">—</text>
+            <text class="dg-delta" x="0" y="34">—</text>
           </g>
         </g>
         <!-- 출국장 3번 (카운터 F·G) -->
@@ -578,9 +583,11 @@
           <title></title>
           <rect class="dg-rect" x="460" y="280" width="170" height="185" rx="10" ry="10"/>
           <g class="badge" transform="translate(545, 372)">
-            <rect class="badge-bg" x="-46" y="-26" width="92" height="52" rx="8" ry="8"/>
-            <text class="dg-label" x="0" y="-4">3번</text>
-            <text class="dg-pax" x="0" y="18">—</text>
+            <rect class="badge-bg" x="-52" y="-44" width="104" height="88" rx="9" ry="9"/>
+            <text class="dg-label" x="0" y="-26">3번</text>
+            <text class="dg-pax" x="0" y="-2">—</text>
+            <text class="dg-mtd" x="0" y="18">—</text>
+            <text class="dg-delta" x="0" y="34">—</text>
           </g>
         </g>
         <!-- 출국장 2번 (카운터 C·D·E) -->
@@ -588,9 +595,11 @@
           <title></title>
           <rect class="dg-rect" x="630" y="295" width="160" height="185" rx="10" ry="10"/>
           <g class="badge" transform="translate(710, 387)">
-            <rect class="badge-bg" x="-46" y="-26" width="92" height="52" rx="8" ry="8"/>
-            <text class="dg-label" x="0" y="-4">2번</text>
-            <text class="dg-pax" x="0" y="18">—</text>
+            <rect class="badge-bg" x="-52" y="-44" width="104" height="88" rx="9" ry="9"/>
+            <text class="dg-label" x="0" y="-26">2번</text>
+            <text class="dg-pax" x="0" y="-2">—</text>
+            <text class="dg-mtd" x="0" y="18">—</text>
+            <text class="dg-delta" x="0" y="34">—</text>
           </g>
         </g>
         <!-- 출국장 1번 (동편 끝, 카운터 A·B) -->
@@ -598,9 +607,11 @@
           <title></title>
           <rect class="dg-rect" x="790" y="320" width="108" height="180" rx="10" ry="10"/>
           <g class="badge" transform="translate(844, 410)">
-            <rect class="badge-bg" x="-46" y="-26" width="92" height="52" rx="8" ry="8"/>
-            <text class="dg-label" x="0" y="-4">1번</text>
-            <text class="dg-pax" x="0" y="18">—</text>
+            <rect class="badge-bg" x="-50" y="-44" width="100" height="88" rx="9" ry="9"/>
+            <text class="dg-label" x="0" y="-26">1번</text>
+            <text class="dg-pax" x="0" y="-2">—</text>
+            <text class="dg-mtd" x="0" y="18">—</text>
+            <text class="dg-delta" x="0" y="34">—</text>
           </g>
         </g>
       </svg>
@@ -616,9 +627,11 @@
           <title></title>
           <rect class="dg-rect" x="110" y="270" width="335" height="240" rx="12" ry="12"/>
           <g class="badge" transform="translate(277, 390)">
-            <rect class="badge-bg" x="-58" y="-30" width="116" height="60" rx="9" ry="9"/>
-            <text class="dg-label" x="0" y="-6" style="font-size:20px">2번</text>
-            <text class="dg-pax" x="0" y="20" style="font-size:18px">—</text>
+            <rect class="badge-bg" x="-72" y="-54" width="144" height="108" rx="11" ry="11"/>
+            <text class="dg-label" x="0" y="-32" style="font-size:16px">2번</text>
+            <text class="dg-pax" x="0" y="-2" style="font-size:22px">—</text>
+            <text class="dg-mtd" x="0" y="22" style="font-size:12px">—</text>
+            <text class="dg-delta" x="0" y="42" style="font-size:13px">—</text>
           </g>
         </g>
         <!-- 출국장 1번 (동편, 카운터 A·B·C·D, 게이트 247~250) -->
@@ -626,9 +639,11 @@
           <title></title>
           <rect class="dg-rect" x="478" y="270" width="335" height="240" rx="12" ry="12"/>
           <g class="badge" transform="translate(645, 390)">
-            <rect class="badge-bg" x="-58" y="-30" width="116" height="60" rx="9" ry="9"/>
-            <text class="dg-label" x="0" y="-6" style="font-size:20px">1번</text>
-            <text class="dg-pax" x="0" y="20" style="font-size:18px">—</text>
+            <rect class="badge-bg" x="-72" y="-54" width="144" height="108" rx="11" ry="11"/>
+            <text class="dg-label" x="0" y="-32" style="font-size:16px">1번</text>
+            <text class="dg-pax" x="0" y="-2" style="font-size:22px">—</text>
+            <text class="dg-mtd" x="0" y="22" style="font-size:12px">—</text>
+            <text class="dg-delta" x="0" y="42" style="font-size:13px">—</text>
           </g>
         </g>
       </svg>
@@ -816,40 +831,82 @@
     return 'rgba(140,0,35,' + alpha.toFixed(3) + ')';
   }
 
-  function paintMap(day, hour) {
-    var perGate = day === 'tomorrow' ? P.tomorrow_per_gate : P.today_per_gate;
-    var values = {};
+  // hour='all'이면 24시간 합계, 아니면 해당 시간대만 (MTD도 같은 비율로 스케일)
+  function paintMap(hour) {
+    var perGate = P.tomorrow_per_gate || {};
+    var todayPerGate = P.today_per_gate || {};
+    var gateMtd = P.gate_mtd || {};
+    // 시간대 셀렉터가 'all'이 아니면 MTD를 같은 시간대 비율로 스케일.
+    // 일평균(24h) → 1h 환산이라 단순히 1/24만 하면 평균 분포 가정 — 더 정확하려면
+    // 오늘의 시간 분포를 반영. 여기선 오늘 perGate 시간 분포를 일평균 비율로 사용.
+    var values = {}, mtdValues = {};
     var t1Sum = 0, t2Sum = 0, max = 0;
     MAP_KEYS.forEach(function(k) {
-      var arr = (perGate && perGate[k]) || [];
+      var arr = perGate[k] || [];
       var v;
       if (hour === 'all') {
-        v = 0;
-        for (var i = 0; i < arr.length; i++) v += arr[i] || 0;
+        v = 0; for (var i = 0; i < arr.length; i++) v += arr[i] || 0;
       } else {
         v = arr[hour] || 0;
       }
       values[k] = v;
+      // MTD: 시간대 'all'이면 일평균 그대로, 시간대 선택이면 오늘의 해당 시간 비율로 스케일
+      var mtdDay = gateMtd[k] || 0;
+      var mtdH = mtdDay;
+      if (hour !== 'all' && mtdDay > 0) {
+        var todayArr = todayPerGate[k] || [];
+        var todayDaySum = 0;
+        for (var j = 0; j < todayArr.length; j++) todayDaySum += todayArr[j] || 0;
+        if (todayDaySum > 0) {
+          var ratio = (todayArr[hour] || 0) / todayDaySum;
+          mtdH = Math.round(mtdDay * ratio);
+        } else {
+          mtdH = 0;
+        }
+      }
+      mtdValues[k] = mtdH;
       if (k.indexOf('t1') === 0) t1Sum += v; else t2Sum += v;
       if (v > max) max = v;
     });
-    var sum = t1Sum + t2Sum;
 
     MAP_KEYS.forEach(function(k) {
       var v = values[k];
+      var mtdH = mtdValues[k];
       var t = max > 0 ? v / max : 0;
       var rect = document.querySelector('.dg-zone[data-key="'+k+'"] .dg-rect');
       var paxText = document.querySelector('.dg-zone[data-key="'+k+'"] .dg-pax');
+      var mtdText = document.querySelector('.dg-zone[data-key="'+k+'"] .dg-mtd');
+      var deltaText = document.querySelector('.dg-zone[data-key="'+k+'"] .dg-delta');
       var titleEl = document.querySelector('.dg-zone[data-key="'+k+'"] > title');
+
       if (rect) rect.setAttribute('fill', max > 0 ? fillForRatio(t) : 'rgba(160,160,160,0.10)');
+
+      // 운영없음 (D+1 = 0 AND MTD = 0) → 단일 라벨
+      var inactive = (v === 0 && mtdH === 0);
       if (paxText) {
         paxText.textContent = max > 0
-          ? (v > 0 ? v.toLocaleString() + '명' : '운영없음')
+          ? (inactive ? '운영없음' : v.toLocaleString() + '명')
           : '—';
       }
+      if (mtdText) {
+        mtdText.textContent = (!inactive && mtdH > 0) ? '평균 ' + mtdH.toLocaleString() : '';
+      }
+      if (deltaText) {
+        if (!inactive && mtdH > 0 && v > 0) {
+          var pct = (v - mtdH) / mtdH * 100;
+          var arrow = pct > 0.05 ? '▲' : (pct < -0.05 ? '▼' : '―');
+          var color = pct > 0.05 ? '#8C0023' : (pct < -0.05 ? '#2A52BE' : '#909090');
+          deltaText.textContent = arrow + ' ' + (pct > 0 ? '+' : '') + pct.toFixed(1) + '%';
+          deltaText.setAttribute('fill', color);
+        } else {
+          deltaText.textContent = '';
+        }
+      }
       if (titleEl) {
-        var pct = sum > 0 ? Math.round(v / sum * 1000) / 10 : 0;
-        titleEl.textContent = MAP_LABEL[k] + ' — ' + v.toLocaleString() + '명 (점유율 ' + pct + '%)';
+        var sumAll = t1Sum + t2Sum;
+        var pct2 = sumAll > 0 ? Math.round(v / sumAll * 1000) / 10 : 0;
+        var mtdNote = (mtdH > 0) ? ' · 평균 ' + mtdH.toLocaleString() + '명' : '';
+        titleEl.textContent = MAP_LABEL[k] + ' — ' + v.toLocaleString() + '명 (점유율 ' + pct2 + '%)' + mtdNote;
       }
     });
 
@@ -865,27 +922,15 @@
     if (legendMax) legendMax.textContent = max > 0 ? max.toLocaleString() : '—';
   }
 
-  var mapState = { day: 'tomorrow', hour: 'all' };
-  document.querySelectorAll('.map-tab').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      document.querySelectorAll('.map-tab').forEach(function(b) {
-        b.classList.remove('active');
-        b.setAttribute('aria-selected', 'false');
-      });
-      btn.classList.add('active');
-      btn.setAttribute('aria-selected', 'true');
-      mapState.day = btn.dataset.day;
-      paintMap(mapState.day, mapState.hour);
-    });
-  });
+  var mapHour = 'all';
   var hourSelect = document.getElementById('map-hour-select');
   if (hourSelect) {
     hourSelect.addEventListener('change', function() {
-      mapState.hour = hourSelect.value === 'all' ? 'all' : parseInt(hourSelect.value, 10);
-      paintMap(mapState.day, mapState.hour);
+      mapHour = hourSelect.value === 'all' ? 'all' : parseInt(hourSelect.value, 10);
+      paintMap(mapHour);
     });
   }
-  paintMap(mapState.day, mapState.hour);
+  paintMap(mapHour);
 
   // 일자별 추이
   var dc = P.daily_chart;

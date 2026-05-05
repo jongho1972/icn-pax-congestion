@@ -20,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 
 from icn_utils.aggregator import (
     WEEKDAY_KR, daily_totals, fmt_peak_hour, hourly_per_gate, hourly_t1_t2,
-    kpi_summary, mtd_summary,
+    kpi_summary, mtd_per_gate, mtd_summary,
 )
 from icn_utils.data_loader import (
     fetch_live, list_available_dates, load_day, load_range,
@@ -124,6 +124,7 @@ def build_payload(service_key: str | None) -> dict:
 
     # MTD 평균 (이번달 1일 ~ 어제, d0 실측)
     mtd = mtd_summary(daily_map, today)
+    gate_mtd = mtd_per_gate(daily_map, today)
     delta_pct_T1 = None
     delta_pct_T2 = None
     if mtd["T1"] > 0 and kpi["tomorrow"]["T1"] > 0:
@@ -204,6 +205,7 @@ def build_payload(service_key: str | None) -> dict:
             "source": tomorrow_src,
         },
         "mtd": mtd,
+        "gate_mtd": gate_mtd,
         "delta_pct_T1": delta_pct_T1,
         "delta_pct_T2": delta_pct_T2,
         "today_hourly": today_hourly,

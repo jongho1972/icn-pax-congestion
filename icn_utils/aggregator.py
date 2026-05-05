@@ -116,6 +116,35 @@ def kpi_summary(today_df: pd.DataFrame, tomorrow_df: pd.DataFrame) -> dict:
     return {"today": one(today_df), "tomorrow": one(tomorrow_df)}
 
 
+def mtd_per_gate(daily_map: dict[str, tuple[pd.DataFrame, str]], today: date) -> dict:
+    """이번 달 1일 ~ 어제까지 d0(실측) 기준 8개 출국장 각각의 일평균.
+
+    Returns: {"t1dg1": avg, ..., "t2dg2": avg}. 데이터 없으면 0.
+    """
+    cols = DG_COLS_T1 + DG_COLS_T2
+    first = today.replace(day=1)
+    yesterday = today - timedelta(days=1)
+    sums = {c: 0 for c in cols}
+    n = 0
+    for ymd, (df, src) in daily_map.items():
+        try:
+            d = datetime.strptime(ymd, "%Y%m%d").date()
+        except ValueError:
+            continue
+        if d < first or d > yesterday:
+            continue
+        if src not in ("d0", "live"):
+            continue
+        if df is None or df.empty:
+            continue
+        n += 1
+        for c in cols:
+            sums[c] += int(df[c].sum())
+    if n == 0:
+        return {c: 0 for c in cols}
+    return {c: round(sums[c] / n) for c in cols}
+
+
 def mtd_summary(daily_map: dict[str, tuple[pd.DataFrame, str]], today: date) -> dict:
     """이번 달 1일 ~ 어제까지의 d0(실측) 일평균.
 
