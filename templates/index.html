@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#ffffff">
-  <title>인천공항 출국장 혼잡도</title>
+  <title>인천공항 출국장별 예상 승객수</title>
   <style id="auth-gate">html,body{visibility:hidden!important;overflow:hidden!important}</style>
   <script>
   (function() {
@@ -154,18 +154,23 @@
 
     /* KPI — 섹션 타이틀 + T1·T2 각각 */
     .kpi-section-title {
-      display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
-      margin: 0 0 10px; padding: 0;
-      font-size: 15px; font-weight: 800; color: var(--text);
-      letter-spacing: -0.2px;
+      display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+      margin: 0 0 12px; padding: 0;
+      letter-spacing: -0.3px;
     }
     .kpi-section-title::before {
-      content: ''; width: 3px; height: 14px;
+      content: ''; width: 3px; height: 20px;
       background: var(--gold); border-radius: 2px;
       align-self: center;
     }
     .kpi-section-date {
-      font-size: 13px; font-weight: 500; color: var(--text-mid);
+      font-size: 20px; font-weight: 800; color: var(--text);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.5px;
+    }
+    .kpi-section-label {
+      font-size: 13px; font-weight: 600; color: var(--text-light);
+      letter-spacing: 0.3px;
     }
     .kpi-grid {
       display: grid;
@@ -438,7 +443,7 @@
 <div class="container">
 
   <div class="topbar">
-    <h1>인천공항 출국장 혼잡도</h1>
+    <h1>인천공항 출국장별 예상 승객수</h1>
     <div class="meta">
       데이터 기준 : <b>{{ p.fetched_at }}</b><br>
       누적 데이터 : <b>{{ p.data_dates_count }}</b>일치
@@ -447,8 +452,8 @@
 
   <!-- KPI : T1 D+1 + T2 D+1 (각각 MTD 평균 baseline 포함) -->
   <h2 class="kpi-section-title">
-    내일 예상 · D+1
     <span class="kpi-section-date">{{ p.tomorrow.date }} ({{ p.tomorrow.weekday }})</span>
+    <span class="kpi-section-label">내일 예상</span>
   </h2>
   <div class="kpi-grid">
     <!-- T1 내일 예상 -->
@@ -502,7 +507,7 @@
 
   <!-- 출국장별 예상 승객수 (D+1 평면도) -->
   <section>
-    <h2 class="section-title">출국장별 예상 승객수 <span style="font-size:13px;font-weight:500;color:var(--text-mid);margin-left:6px">D+1 · {{ p.tomorrow.date }} ({{ p.tomorrow.weekday }})</span></h2>
+    <h2 class="section-title">출국장별 예상 승객수</h2>
 
     <div class="map-controls">
       <label class="map-hour">시간대
@@ -534,12 +539,11 @@
           <option value="23">23~24시</option>
         </select>
       </label>
-      <div class="map-stat" id="map-stat">T1 <b>—</b>명 · T2 <b>—</b>명 · 최대 <b>—</b>명</div>
     </div>
 
     <!-- T1 도면 -->
     <div class="chart-card floor-map-card">
-      <h3 class="floor-map-title">T1 · 제1터미널 출국장 (3F) — 출국장 1~6번</h3>
+      <h3 class="floor-map-title">T1</h3>
       <svg class="floor-svg" id="floor-map-t1" viewBox="0 0 918 688" preserveAspectRatio="xMidYMid meet" role="img" aria-label="T1 출국장 평면도">
         <image href="/static/floormap/t1.jpeg" x="0" y="0" width="918" height="688"/>
         <!-- 출국장 6번 (서편 끝, 카운터 M·N) -->
@@ -619,7 +623,7 @@
 
     <!-- T2 도면 -->
     <div class="chart-card floor-map-card">
-      <h3 class="floor-map-title">T2 · 제2터미널 출국장 (3F) — 출국장 1·2번</h3>
+      <h3 class="floor-map-title">T2</h3>
       <svg class="floor-svg" id="floor-map-t2" viewBox="0 0 921 698" preserveAspectRatio="xMidYMid meet" role="img" aria-label="T2 출국장 평면도">
         <image href="/static/floormap/t2.jpeg" x="0" y="0" width="921" height="698"/>
         <!-- 출국장 2번 (서편, 카운터 E·F·G·H, 게이트 251~253) -->
