@@ -11,7 +11,6 @@ t2dg1~2, t2dgsum2). 합계 행도 포함.
 """
 from __future__ import annotations
 
-import pickle
 import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -173,8 +172,9 @@ def fetch_day(target: date) -> pd.DataFrame:
 def save_pickle(target: date, df: pd.DataFrame) -> Path:
     DAILY_DIR.mkdir(parents=True, exist_ok=True)
     path = DAILY_DIR / f"passgr_{target.strftime('%Y%m%d')}_web.pkl"
-    with path.open("wb") as f:
-        pickle.dump(df, f)
+    # pandas to_pickle 사용 — pandas 버전·환경 간 read_pickle 호환성 보장
+    # (plain pickle.dump 사용 시 Render 환경에서 read_pickle 실패하던 이슈 수정)
+    df.to_pickle(path)
     return path
 
 
