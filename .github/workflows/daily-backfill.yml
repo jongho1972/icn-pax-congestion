@@ -2,7 +2,9 @@ name: Daily backfill
 
 on:
   schedule:
-    # 매일 23:30 KST = 14:30 UTC
+    # 매일 17:05 KST = 08:05 UTC — 17:00 KST OpenAPI 발표 직후 D+1 신선도 확보
+    - cron: '5 8 * * *'
+    # 매일 23:30 KST = 14:30 UTC — 그날 D-0 마감값 + 다음날 D+1 백업 (덮어쓰기)
     - cron: '30 14 * * *'
   workflow_dispatch:
 
@@ -43,7 +45,7 @@ jobs:
             exit 0
           fi
           git diff --cached --stat
-          git commit -m "data: daily backfill $(date -u +%Y%m%d)"
+          git commit -m "data: backfill $(TZ=Asia/Seoul date +%Y%m%d-%H%M)KST"
           git push origin main
           echo "RESULT: PUSHED"
           ls Daily_Data/ | wc -l

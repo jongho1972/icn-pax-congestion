@@ -2,7 +2,9 @@ name: Refresh dashboard cache
 
 on:
   schedule:
-    # 매일 23:35 KST = 14:35 UTC (backfill 직후, Daily_Data git push 반영 후)
+    # 매일 17:10 KST = 08:10 UTC — 17:05 backfill 직후 캐시 갱신
+    - cron: '10 8 * * *'
+    # 매일 23:35 KST = 14:35 UTC — 23:30 backfill 직후 캐시 갱신
     - cron: '35 14 * * *'
   workflow_dispatch:
 

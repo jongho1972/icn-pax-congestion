@@ -25,12 +25,13 @@
 ## 데이터 수급 흐름
 
 - **API 한계**: D-0(오늘 부분실측+예측) / D+1(내일 예측) 만 반환. 과거 데이터 미제공 → **반드시 매일 누적 수집 필요**
-- **수집 정책 (매일 23:30 KST)**:
-  - `Daily_Data/passgr_YYYYMMDD_d0.pkl` — 그날 D-0 호출분 (실측 근사 = 최종값으로 채택)
-  - `Daily_Data/passgr_YYYYMMDD_d1.pkl` — 다음날 D+1 예측분 (백업·검증용)
+- **OpenAPI 갱신**: 매일 17:00 KST 발표 (공식). D+1 예측이 그 시점에 다음날 데이터로 갱신됨.
+- **수집 정책 (매일 17:05 KST + 23:30 KST 2회)**:
+  - `Daily_Data/passgr_YYYYMMDD_d0.pkl` — 그날 D-0 호출분 (덮어쓰기 — 23:30 cron 결과가 최종값으로 채택)
+  - `Daily_Data/passgr_YYYYMMDD_d1.pkl` — 다음날 D+1 예측분 (백업·검증용 — 17:05 cron이 발표 직후 신선도 확보)
 - **조회 우선순위**: 같은 날짜에 d0가 있으면 d0, 없으면 d1, 둘 다 없고 오늘·내일이면 라이브 API fallback
 - **캐싱**: 메모리 + 디스크 pickle 이중 캐시 (`/tmp/icn_pax_congestion_cache.pkl`). TTL 48시간(cron 누락 안전 마진). 키 = 오늘 날짜
-- **캐시 갱신**: 매일 23:35 KST에 GitHub Actions cron이 `/api/refresh` 호출
+- **캐시 갱신**: 17:10 KST + 23:35 KST에 GitHub Actions cron이 `/api/refresh` 호출 (각 backfill 5분 후)
 
 ## API 응답 구조
 
@@ -77,16 +78,18 @@ INCHEON_API_KEY="..." uvicorn main:app --reload --port 8000
 
 ## 자동화
 
-- **Claude Code 스케줄 트리거** (Daily_Data 수집)
-  - 스케줄: 매일 23:30 KST (= 14:30 UTC)
-  - 동작: 원격 에이전트가 레포 clone → `backfill.py` 실행 → `Daily_Data/` 갱신 → 변경 있으면 `git push origin main`
-  - 출발항공편(17:00 KST)과 시간 분리해서 트리거 충돌 방지
-- **GitHub Actions** `.github/workflows/keep-alive.yml` (Render 슬립 방지 + 페이로드 캐시 워밍)
-  - 스케줄: 10분마다 `GET /` 호출 (`--max-time 300` — 콜드 빌드 1~3분 흡수). 메인 페이지 페이로드 캐시까지 워밍해 컨테이너 재시작 후 첫 사용자가 빌드 비용 떠안는 일 방지
-- **GitHub Actions** `.github/workflows/refresh-cache.yml`
-  - 스케줄: 매일 23:35 KST (= 14:35 UTC)
+- **GitHub Actions** `.github/workflows/daily-backfill.yml` (Daily_Data 수집)
+  - 스케줄: **17:05 KST + 23:30 KST** (하루 2회)
+    - **17:05 KST** = 08:05 UTC : 인천공항 OpenAPI 발표(17:00 KST) 직후 D+1 신선도 확보
+    - **23:30 KST** = 14:30 UTC : 그날 D-0 마감값 + 다음날 D+1 백업 (덮어쓰기)
+  - 동작: `actions/checkout` → `pip install pandas requests` → `python3 backfill.py` → `git add Daily_Data/` → 변경 있으면 commit `data: backfill YYYYMMDD-HHMMKST` 후 `git push origin main`
+  - GitHub Secret 필요: `INCHEON_API_KEY`
+- **GitHub Actions** `.github/workflows/refresh-cache.yml` (Render 메모리·디스크 캐시 무효화)
+  - 스케줄: **17:10 KST + 23:35 KST** (backfill 5분 후, push 반영 후)
   - 동작: `POST /api/refresh` (헤더 `X-Refresh-Token: ${{ secrets.REFRESH_TOKEN }}`)
   - GitHub Secret 필요: `REFRESH_TOKEN`
+- **GitHub Actions** `.github/workflows/keep-alive.yml` (Render 슬립 방지 + 페이로드 캐시 워밍)
+  - 스케줄: 10분마다 `GET /` 호출 (`--max-time 300` — 콜드 빌드 1~3분 흡수). 메인 페이지 페이로드 캐시까지 워밍해 컨테이너 재시작 후 첫 사용자가 빌드 비용 떠안는 일 방지
 
 ## 신라 사이트 연동
 
