@@ -683,7 +683,6 @@
             <th>T2</th>
             <th>T2 피크 시간</th>
             <th>T2 피크 객수</th>
-            <th>출처</th>
           </tr>
         </thead>
         <tbody>
@@ -697,14 +696,6 @@
             <td class="t2">{% if r.T2 > 0 %}{{ "{:,}".format(r.T2) }}{% else %}<span class="dash">—</span>{% endif %}</td>
             <td class="t2">{{ r.peak_hour_T2 }}</td>
             <td class="t2">{% if r.peak_total_T2 > 0 %}{{ "{:,}".format(r.peak_total_T2) }}{% else %}<span class="dash">—</span>{% endif %}</td>
-            <td>
-              {% if r.source == 'd0' %}<span class="src-pill">실측</span>
-              {% elif r.source == 'web' %}<span class="src-pill web">발표</span>
-              {% elif r.source == 'd1' %}<span class="src-pill d1">예측</span>
-              {% elif r.source == 'live' %}<span class="src-pill live">실시간</span>
-              {% else %}<span class="src-pill none">없음</span>
-              {% endif %}
-            </td>
           </tr>
         {% endfor %}
         </tbody>

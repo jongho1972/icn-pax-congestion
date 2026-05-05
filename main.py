@@ -218,12 +218,21 @@ def build_payload(service_key: str | None) -> dict:
 
 @app.on_event("startup")
 def warm_cache_on_startup() -> None:
-    _load_disk_cache()
+    # 컨테이너 시작 시 디스크 캐시 무효화 — 새 pkl 파일(backfill·web 스크래퍼 결과)
+    # 또는 코드 변경이 즉시 반영되도록. 디스크 캐시는 /api/refresh가 보존용으로
+    # 갱신해 컨테이너 재시작 후 첫 요청 지연을 줄이는 용도지만, 새 deploy 직후엔
+    # 반드시 stale일 가능성이 있으므로 시작 시 비운다.
+    try:
+        if CACHE_FILE.exists():
+            CACHE_FILE.unlink()
+    except Exception as exc:
+        print(f"[warm_cache_on_startup] disk cache unlink skipped: {exc!r}")
+    _CACHE.clear()
     service_key = os.environ.get("INCHEON_API_KEY", "")
     try:
         build_payload(service_key)
     except Exception as exc:
-        print(f"[warm_cache_on_startup] skipped: {exc!r}")
+        print(f"[warm_cache_on_startup] build skipped: {exc!r}")
 
 
 # ---------- 라우트 ----------
