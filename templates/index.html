@@ -152,7 +152,21 @@
     .meta { color: var(--text-light); font-size: 12px; line-height: 1.5; }
     .meta b { color: var(--text-mid); font-weight: 600; }
 
-    /* KPI 카드 — T1·T2 각각 */
+    /* KPI — 섹션 타이틀 + T1·T2 각각 */
+    .kpi-section-title {
+      display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+      margin: 0 0 10px; padding: 0;
+      font-size: 15px; font-weight: 800; color: var(--text);
+      letter-spacing: -0.2px;
+    }
+    .kpi-section-title::before {
+      content: ''; width: 3px; height: 14px;
+      background: var(--gold); border-radius: 2px;
+      align-self: center;
+    }
+    .kpi-section-date {
+      font-size: 13px; font-weight: 500; color: var(--text-mid);
+    }
     .kpi-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -172,11 +186,11 @@
       background: var(--t1);
     }
     .kpi-card.kpi-t2::before { background: var(--t2); }
-    .kpi-card .kpi-term {
-      display: inline-block; padding: 2px 9px; border-radius: 6px;
-      font-size: 11px; font-weight: 800; letter-spacing: 0.3px;
+    .kpi-term {
+      display: inline-block; padding: 4px 12px; border-radius: 7px;
+      font-size: 14px; font-weight: 800; letter-spacing: 0.4px;
       background: var(--t1-soft); color: var(--t1);
-      margin-right: 8px; vertical-align: 1px;
+      margin-bottom: 14px;
     }
     .kpi-card.kpi-t2 .kpi-term {
       background: var(--t2-soft); color: var(--t2);
@@ -421,11 +435,14 @@
   </div>
 
   <!-- KPI : T1 D+1 + T2 D+1 (각각 MTD 평균 baseline 포함) -->
+  <h2 class="kpi-section-title">
+    내일 예상 · D+1
+    <span class="kpi-section-date">{{ p.tomorrow.date }} ({{ p.tomorrow.weekday }})</span>
+  </h2>
   <div class="kpi-grid">
     <!-- T1 내일 예상 -->
     <div class="kpi-card kpi-hero kpi-t1">
-      <div class="kpi-label"><span class="kpi-term">T1</span>내일 예상 · D+1</div>
-      <div class="kpi-date">{{ p.tomorrow.date }} ({{ p.tomorrow.weekday }})</div>
+      <span class="kpi-term">T1</span>
       {% if p.tomorrow.kpi.T1 > 0 %}
         <div class="kpi-main-row">
           <div class="kpi-main">{{ "{:,}".format(p.tomorrow.kpi.T1) }}<span class="unit">명</span></div>
@@ -449,8 +466,7 @@
 
     <!-- T2 내일 예상 -->
     <div class="kpi-card kpi-hero kpi-t2">
-      <div class="kpi-label"><span class="kpi-term">T2</span>내일 예상 · D+1</div>
-      <div class="kpi-date">{{ p.tomorrow.date }} ({{ p.tomorrow.weekday }})</div>
+      <span class="kpi-term">T2</span>
       {% if p.tomorrow.kpi.T2 > 0 %}
         <div class="kpi-main-row">
           <div class="kpi-main">{{ "{:,}".format(p.tomorrow.kpi.T2) }}<span class="unit">명</span></div>
