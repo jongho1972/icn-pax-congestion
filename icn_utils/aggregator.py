@@ -4,7 +4,7 @@ API 한 행 = 한 시간대(00_01 ~ 23_24). 출국장 합계는 t1dgsum1 / t2dgs
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Iterable
 
 import pandas as pd
@@ -106,6 +106,43 @@ def kpi_summary(today_df: pd.DataFrame, tomorrow_df: pd.DataFrame) -> dict:
         return {"total": t1 + t2, "T1": t1, "T2": t2,
                 "peak_hour": peak_hour, "peak_total": peak_total}
     return {"today": one(today_df), "tomorrow": one(tomorrow_df)}
+
+
+def mtd_summary(daily_map: dict[str, tuple[pd.DataFrame, str]], today: date) -> dict:
+    """이번 달 1일 ~ 어제까지의 d0(실측) 일평균.
+
+    Returns: {"days", "T1", "T2", "total", "period_label"}.
+    데이터가 없으면 days=0.
+    """
+    first = today.replace(day=1)
+    yesterday = today - timedelta(days=1)
+    t1s, t2s = [], []
+    for ymd, (df, src) in daily_map.items():
+        try:
+            d = datetime.strptime(ymd, "%Y%m%d").date()
+        except ValueError:
+            continue
+        if d < first or d > yesterday:
+            continue
+        if src not in ("d0", "live"):
+            continue
+        if df is None or df.empty:
+            continue
+        t1s.append(int(df[T1_TOTAL].sum()))
+        t2s.append(int(df[T2_TOTAL].sum()))
+    n = len(t1s)
+    if n == 0:
+        return {"days": 0, "T1": 0, "T2": 0, "total": 0,
+                "period_label": "—"}
+    t1_avg = round(sum(t1s) / n)
+    t2_avg = round(sum(t2s) / n)
+    return {
+        "days": n,
+        "T1": t1_avg,
+        "T2": t2_avg,
+        "total": t1_avg + t2_avg,
+        "period_label": f"{first.month}/{first.day} ~ {yesterday.month}/{yesterday.day}",
+    }
 
 
 WEEKDAY_KR = ["월", "화", "수", "목", "금", "토", "일"]

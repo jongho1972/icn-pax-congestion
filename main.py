@@ -20,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 
 from icn_utils.aggregator import (
     WEEKDAY_KR, daily_totals, fmt_peak_hour, hourly_per_gate, hourly_t1_t2,
-    kpi_summary,
+    kpi_summary, mtd_summary,
 )
 from icn_utils.data_loader import (
     fetch_live, list_available_dates, load_day, load_range,
@@ -122,6 +122,14 @@ def build_payload(service_key: str | None) -> dict:
     # KPI
     kpi = kpi_summary(today_df, tomorrow_df)
 
+    # MTD 평균 (이번달 1일 ~ 어제, d0 실측)
+    mtd = mtd_summary(daily_map, today)
+    delta_pct = None
+    if mtd["total"] > 0 and kpi["tomorrow"]["total"] > 0:
+        delta_pct = round(
+            (kpi["tomorrow"]["total"] - mtd["total"]) / mtd["total"] * 100, 1
+        )
+
     # 시간대별 차트 (T1/T2 별 패널, 오늘 vs 내일)
     today_hourly = hourly_t1_t2(today_df)
     tomorrow_hourly = hourly_t1_t2(tomorrow_df)
@@ -188,6 +196,8 @@ def build_payload(service_key: str | None) -> dict:
             "kpi_peak_hour_label": fmt_peak_hour(kpi["tomorrow"]["peak_hour"]),
             "source": tomorrow_src,
         },
+        "mtd": mtd,
+        "delta_pct": delta_pct,
         "today_hourly": today_hourly,
         "tomorrow_hourly": tomorrow_hourly,
         "today_per_gate": today_per_gate,

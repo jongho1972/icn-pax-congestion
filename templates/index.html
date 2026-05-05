@@ -155,40 +155,78 @@
     /* KPI 카드 */
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: 1.6fr 1fr;
       gap: 14px;
-      margin-bottom: 26px;
+      margin-bottom: 12px;
     }
     .kpi-card {
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 18px 20px;
+      padding: 20px 22px;
       position: relative;
       overflow: hidden;
     }
     .kpi-card::before {
       content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
-      background: var(--crimson);
+      background: var(--gold);
     }
-    .kpi-card.tomorrow::before { background: var(--gold); }
+    .kpi-card.kpi-mtd::before { background: var(--t1); }
     .kpi-label {
-      font-size: 12px; color: var(--text-light); font-weight: 600;
-      letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px;
+      font-size: 11px; color: var(--text-light); font-weight: 700;
+      letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 6px;
     }
-    .kpi-date { font-size: 13px; color: var(--text-mid); margin-bottom: 12px; }
+    .kpi-date { font-size: 13px; color: var(--text-mid); margin-bottom: 14px; }
+    .kpi-main-row {
+      display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    }
     .kpi-main {
       font-size: 32px; font-weight: 800; color: var(--text);
       letter-spacing: -0.5px; font-variant-numeric: tabular-nums;
     }
+    .kpi-card.kpi-hero .kpi-main { font-size: 44px; }
     .kpi-main .unit { font-size: 14px; color: var(--text-light); font-weight: 500; margin-left: 4px; }
+    .kpi-delta {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 16px; font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      padding: 4px 10px; border-radius: 8px;
+      letter-spacing: -0.2px;
+    }
+    .kpi-delta.pos { background: rgba(140,0,35,0.10); color: var(--crimson); }
+    .kpi-delta.neg { background: rgba(31,111,235,0.10); color: var(--t1); }
+    .kpi-delta.flat { background: #F2F4F7; color: var(--text-mid); }
+    .kpi-delta-base {
+      font-size: 11px; font-weight: 600; opacity: 0.75; margin-left: 2px;
+    }
+    .kpi-empty {
+      font-size: 14px; color: var(--text-light); font-weight: 600;
+      padding: 8px 0;
+    }
     .kpi-sub {
-      display: flex; gap: 12px; flex-wrap: wrap;
-      margin-top: 10px; font-size: 12px; color: var(--text-mid);
+      display: flex; gap: 8px; flex-wrap: wrap;
+      margin-top: 12px; font-size: 12px; color: var(--text-mid);
     }
     .kpi-sub .seg { padding: 3px 9px; border-radius: 6px; background: #F2F4F7; }
     .kpi-sub .t1 { background: var(--t1-soft); color: var(--t1); font-weight: 600; }
     .kpi-sub .t2 { background: var(--t2-soft); color: var(--t2); font-weight: 600; }
+
+    /* 오늘(D-0) 보조 strip */
+    .kpi-today-strip {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+      background: #F8F8F5; border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 16px; margin-bottom: 26px;
+      font-size: 12px; color: var(--text-mid);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-today-strip .ts-label {
+      font-weight: 700; color: var(--crimson); letter-spacing: 0.4px;
+      text-transform: uppercase; font-size: 11px;
+    }
+    .kpi-today-strip .ts-total b { color: var(--text); font-weight: 800; font-size: 14px; }
+    .kpi-today-strip .ts-peak { color: var(--text-mid); }
+    .kpi-today-strip .seg.t1 { padding: 2px 7px; border-radius: 5px; background: var(--t1-soft); color: var(--t1); font-weight: 600; }
+    .kpi-today-strip .seg.t2 { padding: 2px 7px; border-radius: 5px; background: var(--t2-soft); color: var(--t2); font-weight: 600; }
 
     /* 섹션 */
     section { margin-bottom: 36px; }
@@ -340,6 +378,7 @@
       .container { padding: 18px 14px 40px; }
       .topbar h1 { font-size: 18px; }
       .kpi-grid { grid-template-columns: 1fr; }
+      .kpi-card.kpi-hero .kpi-main { font-size: 36px; }
       .chart-grid { grid-template-columns: 1fr; }
       .chart { height: 280px; }
       .chart.tall { height: 320px; }
@@ -362,38 +401,58 @@
     </div>
   </div>
 
-  <!-- KPI -->
+  <!-- KPI : D+1 hero + MTD 평균 -->
   <div class="kpi-grid">
-    <div class="kpi-card today">
-      <div class="kpi-label">오늘 (D-0)</div>
-      <div class="kpi-date">{{ p.today.date }} ({{ p.today.weekday }})</div>
-      <div class="kpi-main">{{ "{:,}".format(p.today.kpi.total) }}<span class="unit">명</span></div>
-      <div class="kpi-sub">
-        <span class="seg t1">T1 {{ "{:,}".format(p.today.kpi.T1) }}</span>
-        <span class="seg t2">T2 {{ "{:,}".format(p.today.kpi.T2) }}</span>
-        <span class="seg">피크 {{ p.today.kpi_peak_hour_label }} · {{ "{:,}".format(p.today.kpi.peak_total) }}명</span>
-      </div>
-    </div>
-    <div class="kpi-card tomorrow">
-      <div class="kpi-label">내일 예상 (D+1)</div>
+    <!-- 내일 예상 (D+1) — hero -->
+    <div class="kpi-card kpi-hero">
+      <div class="kpi-label">내일 예상 · D+1</div>
       <div class="kpi-date">{{ p.tomorrow.date }} ({{ p.tomorrow.weekday }})</div>
-      <div class="kpi-main">
-        {% if p.tomorrow.kpi.total > 0 %}
-          {{ "{:,}".format(p.tomorrow.kpi.total) }}<span class="unit">명</span>
-        {% else %}
-          <span style="color:var(--text-light);font-size:18px;font-weight:600;">데이터 미생성</span>
-        {% endif %}
-      </div>
-      <div class="kpi-sub">
-        {% if p.tomorrow.kpi.total > 0 %}
+      {% if p.tomorrow.kpi.total > 0 %}
+        <div class="kpi-main-row">
+          <div class="kpi-main">{{ "{:,}".format(p.tomorrow.kpi.total) }}<span class="unit">명</span></div>
+          {% if p.delta_pct is not none %}
+            {% set dcls = 'pos' if p.delta_pct > 0 else ('neg' if p.delta_pct < 0 else 'flat') %}
+            {% set darr = '▲' if p.delta_pct > 0 else ('▼' if p.delta_pct < 0 else '―') %}
+            <div class="kpi-delta {{ dcls }}" title="MTD 일평균 {{ '{:,}'.format(p.mtd.total) }}명 대비">
+              {{ darr }} {{ '{:+.1f}'.format(p.delta_pct) }}%
+              <span class="kpi-delta-base">vs 이번 달 평균</span>
+            </div>
+          {% endif %}
+        </div>
+        <div class="kpi-sub">
           <span class="seg t1">T1 {{ "{:,}".format(p.tomorrow.kpi.T1) }}</span>
           <span class="seg t2">T2 {{ "{:,}".format(p.tomorrow.kpi.T2) }}</span>
           <span class="seg">피크 {{ p.tomorrow.kpi_peak_hour_label }} · {{ "{:,}".format(p.tomorrow.kpi.peak_total) }}명</span>
-        {% else %}
-          <span class="seg">D+1 예측은 보통 자정 직전에 생성됩니다</span>
-        {% endif %}
-      </div>
+        </div>
+      {% else %}
+        <div class="kpi-empty">D+1 예측 미생성 — 보통 23:30 KST 갱신</div>
+      {% endif %}
     </div>
+
+    <!-- 이번 달 일평균 (MTD) -->
+    <div class="kpi-card kpi-mtd">
+      <div class="kpi-label">이번 달 일평균 · MTD</div>
+      <div class="kpi-date">{{ p.mtd.period_label }}{% if p.mtd.days > 0 %} · {{ p.mtd.days }}일 기준{% endif %}</div>
+      {% if p.mtd.total > 0 %}
+        <div class="kpi-main">{{ "{:,}".format(p.mtd.total) }}<span class="unit">명/일</span></div>
+        <div class="kpi-sub">
+          <span class="seg t1">T1 {{ "{:,}".format(p.mtd.T1) }}</span>
+          <span class="seg t2">T2 {{ "{:,}".format(p.mtd.T2) }}</span>
+        </div>
+      {% else %}
+        <div class="kpi-empty">월 초 — 평균 산출 데이터 부족</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 오늘(D-0) 보조 strip -->
+  <div class="kpi-today-strip">
+    <span class="ts-label">오늘 D-0</span>
+    <span>{{ p.today.date }} ({{ p.today.weekday }})</span>
+    <span class="ts-total">총 <b>{{ "{:,}".format(p.today.kpi.total) }}</b>명</span>
+    <span class="seg t1">T1 {{ "{:,}".format(p.today.kpi.T1) }}</span>
+    <span class="seg t2">T2 {{ "{:,}".format(p.today.kpi.T2) }}</span>
+    <span class="ts-peak">피크 {{ p.today.kpi_peak_hour_label }} · {{ "{:,}".format(p.today.kpi.peak_total) }}명</span>
   </div>
 
   <!-- 출국장 평면도 (공간 분포) -->
@@ -402,8 +461,8 @@
 
     <div class="map-controls">
       <div class="map-tabs" role="tablist" aria-label="기준일 선택">
-        <button type="button" class="map-tab active" data-day="today" role="tab" aria-selected="true">오늘 (D-0)</button>
-        <button type="button" class="map-tab" data-day="tomorrow" role="tab" aria-selected="false">내일 (D+1)</button>
+        <button type="button" class="map-tab" data-day="today" role="tab" aria-selected="false">오늘 (D-0)</button>
+        <button type="button" class="map-tab active" data-day="tomorrow" role="tab" aria-selected="true">내일 (D+1)</button>
       </div>
       <label class="map-hour">시간대
         <select id="map-hour-select" aria-label="시간대 선택">
@@ -760,7 +819,7 @@
     if (legendMax) legendMax.textContent = max > 0 ? max.toLocaleString() : '—';
   }
 
-  var mapState = { day: 'today', hour: 'all' };
+  var mapState = { day: 'tomorrow', hour: 'all' };
   document.querySelectorAll('.map-tab').forEach(function(btn) {
     btn.addEventListener('click', function() {
       document.querySelectorAll('.map-tab').forEach(function(b) {
