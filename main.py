@@ -93,10 +93,11 @@ def build_payload(service_key: str | None) -> dict:
         return cached
 
     tomorrow = today + timedelta(days=1)
-    range_start = today - timedelta(days=DAILY_TREND_DAYS - 2)  # D-29부터
+    future_end = today + timedelta(days=2)  # D+2 — airport.kr 스크래핑이 D+2까지 제공
+    range_start = today - timedelta(days=DAILY_TREND_DAYS - 3)  # D+2까지 포함하기 위해 보정
     if range_start < DATA_START_DATE:
         range_start = DATA_START_DATE
-    daily_map = load_range(str(DAILY_DIR), range_start, tomorrow)
+    daily_map = load_range(str(DAILY_DIR), range_start, future_end)
 
     # 오늘·내일 데이터: 디스크 우선 → 비어있으면 라이브 API fallback
     today_ymd = today.strftime("%Y%m%d")

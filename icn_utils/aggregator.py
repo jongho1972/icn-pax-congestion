@@ -133,7 +133,7 @@ def mtd_per_gate(daily_map: dict[str, tuple[pd.DataFrame, str]], today: date) ->
             continue
         if d < first or d > yesterday:
             continue
-        if src not in ("d0", "live"):
+        if src not in ("d0", "live", "web"):
             continue
         if df is None or df.empty:
             continue
@@ -161,7 +161,7 @@ def mtd_summary(daily_map: dict[str, tuple[pd.DataFrame, str]], today: date) -> 
             continue
         if d < first or d > yesterday:
             continue
-        if src not in ("d0", "live"):
+        if src not in ("d0", "live", "web"):
             continue
         if df is None or df.empty:
             continue

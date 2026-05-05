@@ -27,12 +27,15 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install pandas requests
+        run: pip install pandas requests beautifulsoup4
 
-      - name: Run backfill
+      - name: Run OpenAPI backfill (D-0 + D+1)
         env:
           INCHEON_API_KEY: ${{ secrets.INCHEON_API_KEY }}
         run: python3 backfill.py
+
+      - name: Run airport.kr scraper (D-2 ~ D+2)
+        run: python3 backfill_web.py
 
       - name: Commit and push if changed
         run: |

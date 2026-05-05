@@ -5,4 +5,5 @@ python-dotenv
 pandas>=2.0
 numpy>=2.0
 requests>=2.31
+beautifulsoup4>=4.12
 holidays>=0.50

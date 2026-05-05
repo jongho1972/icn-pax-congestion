@@ -339,6 +339,7 @@
       background: #EEF4FF; color: var(--t1); margin-left: 4px;
     }
     .src-pill.d1 { background: #FFF6E0; color: #8A6A00; }
+    .src-pill.web { background: #F1ECF7; color: #6A35A1; }
     .src-pill.live { background: #E8F4EC; color: #1B7A3E; }
     .src-pill.none { background: #F2F4F7; color: var(--text-light); }
 
@@ -689,7 +690,7 @@
     <div class="chart-card">
       <div id="chart-daily" class="chart tall"></div>
     </div>
-    <p class="section-note">노란 배경 = 미래 (D+1 예측) · 빨강 = 주말</p>
+    <p class="section-note">노란 배경 = 미래 예상 (D+1·D+2) · 빨강 = 주말. D+2는 airport.kr 발표 데이터.</p>
   </section>
 
   <!-- 일자별 표 -->
@@ -723,6 +724,7 @@
             <td class="t2">{% if r.peak_total_T2 > 0 %}{{ "{:,}".format(r.peak_total_T2) }}{% else %}<span class="dash">—</span>{% endif %}</td>
             <td>
               {% if r.source == 'd0' %}<span class="src-pill">실측</span>
+              {% elif r.source == 'web' %}<span class="src-pill web">발표</span>
               {% elif r.source == 'd1' %}<span class="src-pill d1">예측</span>
               {% elif r.source == 'live' %}<span class="src-pill live">실시간</span>
               {% else %}<span class="src-pill none">없음</span>
@@ -736,12 +738,16 @@
   </section>
 
   <div class="footnote">
-    <b>데이터 출처</b> : 인천국제공항공사 OpenAPI <code>getPassgrAnncmt</code> · D-0(오늘) ~ D+1(내일) 시간대별 예상 이용객수<br>
+    <b>데이터 출처</b>
+    <ul>
+      <li><b>OpenAPI</b> <code>getPassgrAnncmt</code> v5.0 — D-0(오늘) + D+1(내일) 시간대별 예상 이용객수 · 실시간 5분 갱신</li>
+      <li><b>airport.kr 공식 페이지</b> — D-2 ~ D+2 (7일 발표 데이터) · 매일 17:00 KST 갱신 · 출국장 5,6번 합산 표시 (6번=교통약자=0)</li>
+    </ul>
     <b>수집 정책</b>
     <ul>
-      <li>매일 23:30 KST에 D-0(실측 근사) + D+1(예측) 둘 다 수집해 <code>Daily_Data/</code>에 누적</li>
-      <li>각 날짜의 D-0 수집본을 최종값으로 사용 (D+1은 백업·검증용)</li>
-      <li>D+1 예측은 인천공항 측 데이터 생성 시점에 따라 비어있을 수 있음</li>
+      <li>17:05 KST cron : OpenAPI(D-0+D+1) + airport.kr 스크래핑(D-2~D+2) → 발표 직후 D+1·D+2 신선도 확보</li>
+      <li>23:30 KST cron : OpenAPI(D-0+D+1) + airport.kr 스크래핑 → 그날 D-0 마감값 덮어쓰기</li>
+      <li>조회 우선순위 : <code>d0</code>(그날 마감) → <code>web</code>(공식 발표) → <code>d1</code>(전일 D+1 백업) → live API</li>
     </ul>
     <b>출국장 분류 (공식 도면 매핑 · OpenAPI 가이드 v5.0 기준)</b>
     <ul>
