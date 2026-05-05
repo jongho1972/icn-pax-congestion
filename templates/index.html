@@ -266,6 +266,76 @@
     .src-pill.live { background: #E8F4EC; color: #1B7A3E; }
     .src-pill.none { background: #F2F4F7; color: var(--text-light); }
 
+    /* 출국장 평면도 */
+    .map-controls {
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+      margin-bottom: 12px;
+    }
+    .map-tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .map-tab {
+      padding: 7px 14px; font-size: 12px; font-weight: 600;
+      background: #fff; color: var(--text-mid); border: none; cursor: pointer;
+      font-family: inherit;
+    }
+    .map-tab + .map-tab { border-left: 1px solid var(--border); }
+    .map-tab.active { background: var(--crimson); color: #fff; }
+    .map-hour { font-size: 12px; color: var(--text-mid); display: inline-flex; align-items: center; gap: 8px; }
+    .map-hour select {
+      padding: 6px 10px; font-size: 12px; font-family: inherit;
+      border: 1px solid var(--border); border-radius: 8px; background: #fff;
+      color: var(--text); cursor: pointer;
+    }
+    .map-stat {
+      margin-left: auto; font-size: 12px; color: var(--text-light);
+      font-variant-numeric: tabular-nums;
+    }
+    .map-stat b { color: var(--text-mid); font-weight: 700; }
+    .floor-map-card { padding: 14px 14px 10px; }
+    .floor-map-card + .floor-map-card { margin-top: 14px; }
+    .floor-map-title {
+      font-size: 13px; font-weight: 700; color: var(--text-mid);
+      margin: 0 0 6px; padding: 0 4px;
+    }
+    .floor-svg {
+      width: 100%; height: auto; display: block;
+      font-family: inherit;
+      background: #FBFAF6;
+    }
+    .floor-svg image {
+      filter: saturate(0.25) brightness(1.18) contrast(0.85);
+      opacity: 0.38;
+    }
+    .floor-svg .dg-rect {
+      stroke: rgba(140,0,35,0.6); stroke-width: 1.5;
+      transition: fill 240ms ease, stroke-width 120ms ease;
+      cursor: pointer;
+    }
+    .floor-svg .dg-zone:hover .dg-rect { stroke-width: 3; }
+    .floor-svg .badge-bg {
+      fill: #fff; stroke: #8C0023; stroke-width: 1.4;
+    }
+    .floor-svg .dg-label {
+      font-size: 18px; font-weight: 800; text-anchor: middle;
+      fill: var(--crimson); pointer-events: none;
+    }
+    .floor-svg .dg-pax {
+      font-size: 16px; font-weight: 700; text-anchor: middle;
+      font-variant-numeric: tabular-nums; fill: var(--text);
+      pointer-events: none;
+    }
+    .floor-legend {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 11px; color: var(--text-light);
+      margin-top: 10px; padding: 0 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .floor-legend-bar {
+      flex: 1; height: 10px; border-radius: 5px;
+      background: linear-gradient(to right, rgba(140,0,35,0.10), rgba(140,0,35,0.85));
+      border: 1px solid var(--border);
+    }
+    .floor-legend b { color: var(--text-mid); font-weight: 700; }
+
     @media (max-width: 720px) {
       .container { padding: 18px 14px 40px; }
       .topbar h1 { font-size: 18px; }
@@ -275,6 +345,8 @@
       .chart.tall { height: 320px; }
       table.daily { font-size: 12px; }
       table.daily th, table.daily td { padding: 6px 6px; }
+      .map-controls { gap: 8px; }
+      .map-stat { margin-left: 0; width: 100%; }
     }
   </style>
 </head>
@@ -324,6 +396,155 @@
     </div>
   </div>
 
+  <!-- 출국장 평면도 (공간 분포) -->
+  <section>
+    <h2 class="section-title">출국장 평면도 — 시간대별 이용객 분포</h2>
+
+    <div class="map-controls">
+      <div class="map-tabs" role="tablist" aria-label="기준일 선택">
+        <button type="button" class="map-tab active" data-day="today" role="tab" aria-selected="true">오늘 (D-0)</button>
+        <button type="button" class="map-tab" data-day="tomorrow" role="tab" aria-selected="false">내일 (D+1)</button>
+      </div>
+      <label class="map-hour">시간대
+        <select id="map-hour-select" aria-label="시간대 선택">
+          <option value="all">전체 합계</option>
+          <option value="0">00~01시</option>
+          <option value="1">01~02시</option>
+          <option value="2">02~03시</option>
+          <option value="3">03~04시</option>
+          <option value="4">04~05시</option>
+          <option value="5">05~06시</option>
+          <option value="6">06~07시</option>
+          <option value="7">07~08시</option>
+          <option value="8">08~09시</option>
+          <option value="9">09~10시</option>
+          <option value="10">10~11시</option>
+          <option value="11">11~12시</option>
+          <option value="12">12~13시</option>
+          <option value="13">13~14시</option>
+          <option value="14">14~15시</option>
+          <option value="15">15~16시</option>
+          <option value="16">16~17시</option>
+          <option value="17">17~18시</option>
+          <option value="18">18~19시</option>
+          <option value="19">19~20시</option>
+          <option value="20">20~21시</option>
+          <option value="21">21~22시</option>
+          <option value="22">22~23시</option>
+          <option value="23">23~24시</option>
+        </select>
+      </label>
+      <div class="map-stat" id="map-stat">합계 <b>—</b>명 · 최대 <b>—</b>명</div>
+    </div>
+
+    <!-- T1 도면 -->
+    <div class="chart-card floor-map-card">
+      <h3 class="floor-map-title">T1 · 제1터미널 출국장 (3F) — 출국장 1~6번</h3>
+      <svg class="floor-svg" id="floor-map-t1" viewBox="0 0 918 688" preserveAspectRatio="xMidYMid meet" role="img" aria-label="T1 출국장 평면도">
+        <image href="/static/floormap/t1.jpeg" x="0" y="0" width="918" height="688"/>
+        <!-- 출국장 6번 (서편 끝, 카운터 M·N) -->
+        <g class="dg-zone" data-key="t1dg6">
+          <title></title>
+          <rect class="dg-rect" x="20" y="320" width="150" height="180" rx="10" ry="10"/>
+          <g class="badge" transform="translate(95, 410)">
+            <rect class="badge-bg" x="-46" y="-26" width="92" height="52" rx="8" ry="8"/>
+            <text class="dg-label" x="0" y="-4">6번</text>
+            <text class="dg-pax" x="0" y="18">—</text>
+          </g>
+        </g>
+        <!-- 출국장 5번 (카운터 K·L) -->
+        <g class="dg-zone" data-key="t1dg5">
+          <title></title>
+          <rect class="dg-rect" x="170" y="295" width="140" height="185" rx="10" ry="10"/>
+          <g class="badge" transform="translate(240, 387)">
+            <rect class="badge-bg" x="-46" y="-26" width="92" height="52" rx="8" ry="8"/>
+            <text class="dg-label" x="0" y="-4">5번</text>
+            <text class="dg-pax" x="0" y="18">—</text>
+          </g>
+        </g>
+        <!-- 출국장 4번 (카운터 H·J) -->
+        <g class="dg-zone" data-key="t1dg4">
+          <title></title>
+          <rect class="dg-rect" x="310" y="280" width="150" height="185" rx="10" ry="10"/>
+          <g class="badge" transform="translate(385, 372)">
+            <rect class="badge-bg" x="-46" y="-26" width="92" height="52" rx="8" ry="8"/>
+            <text class="dg-label" x="0" y="-4">4번</text>
+            <text class="dg-pax" x="0" y="18">—</text>
+          </g>
+        </g>
+        <!-- 출국장 3번 (카운터 F·G) -->
+        <g class="dg-zone" data-key="t1dg3">
+          <title></title>
+          <rect class="dg-rect" x="460" y="280" width="170" height="185" rx="10" ry="10"/>
+          <g class="badge" transform="translate(545, 372)">
+            <rect class="badge-bg" x="-46" y="-26" width="92" height="52" rx="8" ry="8"/>
+            <text class="dg-label" x="0" y="-4">3번</text>
+            <text class="dg-pax" x="0" y="18">—</text>
+          </g>
+        </g>
+        <!-- 출국장 2번 (카운터 C·D·E) -->
+        <g class="dg-zone" data-key="t1dg2">
+          <title></title>
+          <rect class="dg-rect" x="630" y="295" width="160" height="185" rx="10" ry="10"/>
+          <g class="badge" transform="translate(710, 387)">
+            <rect class="badge-bg" x="-46" y="-26" width="92" height="52" rx="8" ry="8"/>
+            <text class="dg-label" x="0" y="-4">2번</text>
+            <text class="dg-pax" x="0" y="18">—</text>
+          </g>
+        </g>
+        <!-- 출국장 1번 (동편 끝, 카운터 A·B) -->
+        <g class="dg-zone" data-key="t1dg1">
+          <title></title>
+          <rect class="dg-rect" x="790" y="320" width="108" height="180" rx="10" ry="10"/>
+          <g class="badge" transform="translate(844, 410)">
+            <rect class="badge-bg" x="-46" y="-26" width="92" height="52" rx="8" ry="8"/>
+            <text class="dg-label" x="0" y="-4">1번</text>
+            <text class="dg-pax" x="0" y="18">—</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+
+    <!-- T2 도면 -->
+    <div class="chart-card floor-map-card">
+      <h3 class="floor-map-title">T2 · 제2터미널 출국장 (3F) — 출국장 1·2번</h3>
+      <svg class="floor-svg" id="floor-map-t2" viewBox="0 0 921 698" preserveAspectRatio="xMidYMid meet" role="img" aria-label="T2 출국장 평면도">
+        <image href="/static/floormap/t2.jpeg" x="0" y="0" width="921" height="698"/>
+        <!-- 출국장 2번 (서편, 카운터 E·F·G·H, 게이트 251~253) -->
+        <g class="dg-zone" data-key="t2dg2">
+          <title></title>
+          <rect class="dg-rect" x="110" y="270" width="335" height="240" rx="12" ry="12"/>
+          <g class="badge" transform="translate(277, 390)">
+            <rect class="badge-bg" x="-58" y="-30" width="116" height="60" rx="9" ry="9"/>
+            <text class="dg-label" x="0" y="-6" style="font-size:20px">2번</text>
+            <text class="dg-pax" x="0" y="20" style="font-size:18px">—</text>
+          </g>
+        </g>
+        <!-- 출국장 1번 (동편, 카운터 A·B·C·D, 게이트 247~250) -->
+        <g class="dg-zone" data-key="t2dg1">
+          <title></title>
+          <rect class="dg-rect" x="478" y="270" width="335" height="240" rx="12" ry="12"/>
+          <g class="badge" transform="translate(645, 390)">
+            <rect class="badge-bg" x="-58" y="-30" width="116" height="60" rx="9" ry="9"/>
+            <text class="dg-label" x="0" y="-6" style="font-size:20px">1번</text>
+            <text class="dg-pax" x="0" y="20" style="font-size:18px">—</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+
+    <div class="floor-legend">
+      <span>색상 강도 = 이용객수</span>
+      <div class="floor-legend-bar"></div>
+      <span>0 ~ <b id="legend-max">—</b>명</span>
+    </div>
+
+    <p class="section-note">
+      실제 인천공항 도면 위에 출국장별 이용객수를 색상 강도로 오버레이. 시간대 선택 시 해당 1시간대만 색상 갱신, 기본은 24시간 합계.
+      ※ 도면 출처 : 인천국제공항공사 공식 안내.
+    </p>
+  </section>
+
   <!-- 시간대별 차트 -->
   <section>
     <h2 class="section-title">시간대별 출국장 이용객수</h2>
@@ -338,15 +559,6 @@
       </div>
     </div>
     <p class="section-note">실선 = 오늘 (D-0) · 점선 = 내일 예상 (D+1) · 단위 : 명</p>
-  </section>
-
-  <!-- 출국장별 분포 (오늘 기준 stacked bar) -->
-  <section>
-    <h2 class="section-title">출국장별 시간대 분포 (오늘)</h2>
-    <div class="chart-card">
-      <div id="chart-per-gate" class="chart tall"></div>
-    </div>
-    <p class="section-note">오늘 기준 시간대별 각 출국장 이용객수 누적. T1 D1~D6 (파랑 계열) · T2 D1·D2 (주황 계열)</p>
   </section>
 
   <!-- 일자별 추이 -->
@@ -407,10 +619,10 @@
       <li>각 날짜의 D-0 수집본을 최종값으로 사용 (D+1은 백업·검증용)</li>
       <li>D+1 예측은 인천공항 측 데이터 생성 시점에 따라 비어있을 수 있음</li>
     </ul>
-    <b>출국장 분류</b>
+    <b>출국장 분류 (공식 도면 매핑)</b>
     <ul>
-      <li>T1 : D1·D2(서편) · D3(중앙) · D4·D5·D6(동편)</li>
-      <li>T2 : D1·D2</li>
+      <li>T1 : 1번(동편 끝, 카운터 A·B) · 2번(C·D·E) · 3번(F·G) · 4번(H·J) · 5번(K·L) · 6번(서편 끝, 카운터 M·N) — API <code>t1dg1</code>~<code>t1dg6</code></li>
+      <li>T2 : 1번(동편, 카운터 A~D, 게이트 247~250) · 2번(서편, 카운터 E~H, 게이트 251~253) — API <code>t2dg1</code>·<code>t2dg2</code></li>
     </ul>
   </div>
 
@@ -480,31 +692,95 @@
     xaxis: { tickfont: { size: 10 } },
   }), CONFIG);
 
-  // 출국장별 stacked bar (오늘 기준)
-  var T1_PALETTE = ['#1F6FEB', '#3B83EE', '#5A98F1', '#7AAEF4', '#9AC3F7', '#BAD8FA'];
-  var T2_PALETTE = ['#C26420', '#DA8240'];
-  var perGate = P.today_per_gate;
-  var perGateTraces = [];
-  ['t1dg1','t1dg2','t1dg3','t1dg4','t1dg5','t1dg6'].forEach(function(c, i) {
-    perGateTraces.push({
-      x: hourTicks(), y: perGate[c],
-      type: 'bar', name: 'T1 D' + (i+1),
-      marker: { color: T1_PALETTE[i] },
+  // ===== 출국장 평면도 =====
+  var MAP_KEYS = ['t1dg1','t1dg2','t1dg3','t1dg4','t1dg5','t1dg6','t2dg1','t2dg2'];
+  var MAP_LABEL = {
+    t1dg1: 'T1 1번 출국장 (동편 끝, 카운터 A·B)',
+    t1dg2: 'T1 2번 출국장 (카운터 C·D·E)',
+    t1dg3: 'T1 3번 출국장 (카운터 F·G)',
+    t1dg4: 'T1 4번 출국장 (카운터 H·J)',
+    t1dg5: 'T1 5번 출국장 (카운터 K·L)',
+    t1dg6: 'T1 6번 출국장 (서편 끝, 카운터 M·N)',
+    t2dg1: 'T2 1번 출국장 (동편, 카운터 A~D)',
+    t2dg2: 'T2 2번 출국장 (서편, 카운터 E~H)',
+  };
+  // rgba(140,0,35) 신라 크림슨, opacity 0.10 ~ 0.78
+  var FILL_MIN = 0.10, FILL_MAX = 0.78;
+
+  function fillForRatio(t) {
+    var clamp = Math.max(0, Math.min(1, t));
+    var alpha = FILL_MIN + (FILL_MAX - FILL_MIN) * clamp;
+    return 'rgba(140,0,35,' + alpha.toFixed(3) + ')';
+  }
+
+  function paintMap(day, hour) {
+    var perGate = day === 'tomorrow' ? P.tomorrow_per_gate : P.today_per_gate;
+    var values = {};
+    var sum = 0;
+    var max = 0;
+    MAP_KEYS.forEach(function(k) {
+      var arr = (perGate && perGate[k]) || [];
+      var v;
+      if (hour === 'all') {
+        v = 0;
+        for (var i = 0; i < arr.length; i++) v += arr[i] || 0;
+      } else {
+        v = arr[hour] || 0;
+      }
+      values[k] = v;
+      sum += v;
+      if (v > max) max = v;
+    });
+
+    MAP_KEYS.forEach(function(k) {
+      var v = values[k];
+      var t = max > 0 ? v / max : 0;
+      var rect = document.querySelector('.dg-zone[data-key="'+k+'"] .dg-rect');
+      var paxText = document.querySelector('.dg-zone[data-key="'+k+'"] .dg-pax');
+      var titleEl = document.querySelector('.dg-zone[data-key="'+k+'"] > title');
+      if (rect) rect.setAttribute('fill', max > 0 ? fillForRatio(t) : 'rgba(160,160,160,0.10)');
+      if (paxText) {
+        paxText.textContent = max > 0
+          ? (v > 0 ? v.toLocaleString() + '명' : '운영없음')
+          : '—';
+      }
+      if (titleEl) {
+        var pct = sum > 0 ? Math.round(v / sum * 1000) / 10 : 0;
+        titleEl.textContent = MAP_LABEL[k] + ' — ' + v.toLocaleString() + '명 (점유율 ' + pct + '%)';
+      }
+    });
+
+    var statEl = document.getElementById('map-stat');
+    if (statEl) {
+      statEl.innerHTML = max > 0
+        ? ('합계 <b>' + sum.toLocaleString() + '</b>명 · 최대 <b>' + max.toLocaleString() + '</b>명')
+        : '<span style="color:var(--text-light)">데이터 없음 (D+1 예측 미생성 가능)</span>';
+    }
+    var legendMax = document.getElementById('legend-max');
+    if (legendMax) legendMax.textContent = max > 0 ? max.toLocaleString() : '—';
+  }
+
+  var mapState = { day: 'today', hour: 'all' };
+  document.querySelectorAll('.map-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.map-tab').forEach(function(b) {
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
+      mapState.day = btn.dataset.day;
+      paintMap(mapState.day, mapState.hour);
     });
   });
-  ['t2dg1','t2dg2'].forEach(function(c, i) {
-    perGateTraces.push({
-      x: hourTicks(), y: perGate[c],
-      type: 'bar', name: 'T2 D' + (i+1),
-      marker: { color: T2_PALETTE[i] },
+  var hourSelect = document.getElementById('map-hour-select');
+  if (hourSelect) {
+    hourSelect.addEventListener('change', function() {
+      mapState.hour = hourSelect.value === 'all' ? 'all' : parseInt(hourSelect.value, 10);
+      paintMap(mapState.day, mapState.hour);
     });
-  });
-  Plotly.newPlot('chart-per-gate', perGateTraces, Object.assign({}, COMMON_LAYOUT, {
-    barmode: 'stack',
-    yaxis: { title: { text: '객수', standoff: 8 }, rangemode: 'tozero', gridcolor: '#EAECF0' },
-    xaxis: { tickfont: { size: 10 } },
-    legend: { orientation: 'h', y: 1.08, x: 0, yanchor: 'bottom', font: { size: 10 } },
-  }), CONFIG);
+  }
+  paintMap(mapState.day, mapState.hour);
 
   // 일자별 추이
   var dc = P.daily_chart;

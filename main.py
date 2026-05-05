@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from icn_utils.aggregator import (
@@ -36,6 +37,7 @@ DATA_START_DATE = date(2026, 5, 1)  # 이 날짜 이전 데이터는 무시 (사
 
 app = FastAPI(title="인천공항 출국장 혼잡도")
 app.add_middleware(GZipMiddleware, minimum_size=500)
+app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE / "templates"))
 
 # ---------- TTL 캐시 (메모리 + 디스크) ----------
