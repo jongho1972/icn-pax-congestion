@@ -402,8 +402,8 @@
       pointer-events: none; letter-spacing: -0.3px;
     }
     .floor-svg .dg-mtd {
-      font-size: 10px; font-weight: 600; text-anchor: middle;
-      font-variant-numeric: tabular-nums; fill: #909090;
+      font-size: 10px; font-weight: 700; text-anchor: middle;
+      font-variant-numeric: tabular-nums; fill: var(--text);
       pointer-events: none;
     }
     .floor-svg .dg-delta {
@@ -605,11 +605,11 @@
       <h3 class="floor-map-title">T2</h3>
       <svg class="floor-svg" id="floor-map-t2" viewBox="0 0 921 540" preserveAspectRatio="xMidYMid meet" role="img" aria-label="T2 출국장 평면도">
         <image href="/static/floormap/t2.jpeg" x="0" y="0" width="921" height="698"/>
-        <!-- 출국장 2번 (서편) — 도면 라벨 x ≈ 240 (counter G 위 노란 박스) -->
+        <!-- 출국장 2번 (서편) — 도면 라벨 x ≈ 276 (counter F~G 사이 노란 박스) -->
         <g class="dg-zone" data-key="t2dg2">
           <title></title>
-          <rect class="dg-rect" x="80" y="270" width="320" height="240" rx="12" ry="12"/>
-          <g class="badge" transform="translate(240, 390)">
+          <rect class="dg-rect" x="116" y="270" width="320" height="240" rx="12" ry="12"/>
+          <g class="badge" transform="translate(276, 390)">
             <rect class="badge-bg" x="-72" y="-54" width="144" height="108" rx="11" ry="11"/>
             <text class="dg-label" x="0" y="-32" style="font-size:16px">2번</text>
             <text class="dg-pax" x="0" y="-2" style="font-size:22px">—</text>
@@ -874,19 +874,31 @@
       if (paxText) {
         if (isMobilityGate) {
           paxText.textContent = '교통약자';
-        } else if (max > 0) {
-          paxText.textContent = inactive ? '미운영' : v.toLocaleString() + '명';
+          paxText.style.fontSize = '12px';
+          paxText.style.fontWeight = '700';
+        } else if (max > 0 && inactive) {
+          paxText.textContent = '미운영';
+          paxText.style.fontSize = '12px';
+          paxText.style.fontWeight = '700';
         } else {
-          paxText.textContent = '—';
+          paxText.style.fontSize = '';
+          paxText.style.fontWeight = '';
+          paxText.textContent = (max > 0) ? (v.toLocaleString() + '명') : '—';
         }
       }
       if (mtdText) {
         if (isMobilityGate) {
           mtdText.textContent = '우대 출구';
-        } else if (!inactive && mtdH > 0) {
-          mtdText.textContent = '평균 ' + mtdH.toLocaleString();
+          mtdText.style.fontSize = '12px';
+          mtdText.style.fontWeight = '700';
         } else {
-          mtdText.textContent = '';
+          mtdText.style.fontSize = '';
+          mtdText.style.fontWeight = '';
+          if (!inactive && mtdH > 0) {
+            mtdText.textContent = '평균 ' + mtdH.toLocaleString();
+          } else {
+            mtdText.textContent = '';
+          }
         }
       }
       if (deltaText) {
