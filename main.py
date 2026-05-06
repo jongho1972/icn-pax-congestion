@@ -343,6 +343,26 @@ async def export_raw(start: str, end: str):
         raise HTTPException(404, "해당 기간의 데이터가 없습니다.")
     out = pd.concat(parts, ignore_index=True)
 
+    # 컬럼명을 가공 후 기준으로 변환 (API 원본 → 한국어 라벨)
+    rename_map = {
+        "adate": "날짜",
+        "atime": "시간대",
+        "t1eg1": "T1입국1", "t1eg2": "T1입국2",
+        "t1eg3": "T1입국3", "t1eg4": "T1입국4",
+        "t1egsum1": "T1입국합계",
+        "t1dg1": "T1출국1", "t1dg2": "T1출국2",
+        "t1dg3": "T1출국3", "t1dg4": "T1출국4",
+        "t1dg5": "T1출국5", "t1dg6": "T1출국6(교통약자)",
+        "t1dgsum1": "T1출국합계",
+        "t2eg1": "T2입국1", "t2eg2": "T2입국2",
+        "t2egsum1": "T2입국합계",
+        "t2dg1": "T2출국1", "t2dg2": "T2출국2",
+        "t2dgsum2": "T2출국합계",
+        "source": "출처",
+    }
+    out = out.drop(columns=["tmp1", "tmp2"], errors="ignore")
+    out = out.rename(columns=rename_map)
+
     buf = BytesIO()
     out.to_csv(buf, index=False, encoding="utf-8-sig")
     size = buf.tell()
