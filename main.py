@@ -252,12 +252,36 @@ def warm_cache_on_startup() -> None:
 async def index(request: Request):
     service_key = os.environ.get("INCHEON_API_KEY", "")
     payload = build_payload(service_key)
+
+    today = datetime.now(KST).date()
+    tomorrow = today + timedelta(days=1)
+    avail = [d for d in list_available_dates(str(DAILY_DIR))
+             if d >= DATA_START_DATE.strftime("%Y%m%d")]
+    if avail:
+        try:
+            min_dt = datetime.strptime(avail[0], "%Y%m%d").date()
+        except ValueError:
+            min_dt = DATA_START_DATE
+        try:
+            max_dt = datetime.strptime(avail[-1], "%Y%m%d").date()
+        except ValueError:
+            max_dt = tomorrow
+        if max_dt < tomorrow:
+            max_dt = tomorrow
+    else:
+        min_dt = DATA_START_DATE
+        max_dt = tomorrow
+
     response = templates.TemplateResponse(
         request,
         "index.html",
         {
             "p": payload,
             "payload_json": json.dumps(payload, ensure_ascii=False),
+            "export_min_date": min_dt.strftime("%Y-%m-%d"),
+            "export_max_date": max_dt.strftime("%Y-%m-%d"),
+            "export_default_start": min_dt.strftime("%Y-%m-%d"),
+            "export_default_end": max_dt.strftime("%Y-%m-%d"),
         },
     )
     response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=600"
