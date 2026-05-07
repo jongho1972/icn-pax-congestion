@@ -84,9 +84,17 @@ def send(image_path: Path, recipients: list[str], date_str: str) -> None:
     img.add_header("Content-Disposition", "inline", filename=image_path.name)
     msg.attach(img)
 
+    print(f"[SMTP] connect smtp.gmail.com:465", flush=True)
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.set_debuglevel(1)
         server.login(user, password)
-        server.send_message(msg)
+        refused = server.send_message(msg)
+        print(f"[SMTP] send_message refused={refused!r}", flush=True)
+        try:
+            noop_code, noop_msg = server.noop()
+            print(f"[SMTP] post-send NOOP={noop_code} {noop_msg!r}", flush=True)
+        except Exception as e:
+            print(f"[SMTP] post-send NOOP exception: {e!r}", flush=True)
 
 
 def main() -> int:
@@ -109,8 +117,9 @@ def main() -> int:
             print("수신자 목록이 비어있습니다 (mailing_list.txt / MAIL_RECIPIENTS)", file=sys.stderr)
             return 1
 
+    print(f"[MAIL] recipients (count={len(recipients)}): {recipients}", flush=True)
     send(args.image, recipients, today)
-    print(f"발송 완료: {today} → {recipients}")
+    print(f"발송 완료: {today} → {recipients}", flush=True)
     return 0
 
 

@@ -2,8 +2,8 @@ name: Daily mailer
 
 on:
   schedule:
-    # 매일 18:30 KST = 09:30 UTC
-    - cron: '30 9 * * *'
+    # 매일 17:30 KST = 08:30 UTC (GH Actions 큐 지연 흡수, refresh-cache 17:10 후 충분히 갱신된 시점)
+    - cron: '30 8 * * *'
   workflow_dispatch:
     inputs:
       test_recipient:
@@ -47,3 +47,30 @@ jobs:
           name: dashboard-snapshot
           path: dashboard.png
           retention-days: 7
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          NOTIFY_TO: jongho1972@gmail.com
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          import os, smtplib
+          from email.mime.text import MIMEText
+          from email.utils import formataddr
+          body = (
+              "인천공항 출국장 예상 승객수 일일 메일 발송이 실패했습니다.\n\n"
+              f"워크플로우 로그: {os.environ['RUN_URL']}\n"
+          )
+          msg = MIMEText(body, "plain", "utf-8")
+          msg["Subject"] = "[실패] 인천공항 출국장 예상 승객수 일일 메일러"
+          msg["From"] = formataddr(("인천공항점(마케팅)", os.environ["GMAIL_USER"]))
+          msg["To"] = os.environ["NOTIFY_TO"]
+          pw = "".join(os.environ["GMAIL_APP_PASSWORD"].split())
+          with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
+              s.login(os.environ["GMAIL_USER"], pw)
+              s.send_message(msg)
+          print("Failure notification sent to", os.environ["NOTIFY_TO"])
+          PY
