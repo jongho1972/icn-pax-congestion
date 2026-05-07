@@ -90,6 +90,12 @@ INCHEON_API_KEY="..." uvicorn main:app --reload --port 8000
   - GitHub Secret 필요: `REFRESH_TOKEN`
 - **GitHub Actions** `.github/workflows/keep-alive.yml` (Render 슬립 방지 + 페이로드 캐시 워밍)
   - 스케줄: 10분마다 `GET /` 호출 (`--max-time 300` — 콜드 빌드 1~3분 흡수). 메인 페이지 페이로드 캐시까지 워밍해 컨테이너 재시작 후 첫 사용자가 빌드 비용 떠안는 일 방지
+- **GitHub Actions** `.github/workflows/daily-mailer.yml` (일일 메일 발송)
+  - 스케줄: **18:30 KST** = 09:30 UTC (refresh-cache 17:10 KST 이후, 충분히 캐시 갱신된 시점)
+  - 동작: Playwright(headless chromium)로 Render 사이트 접속 → 비번 입력 → `body.capturing` + 1.5배 zoom → `.container` PNG 캡처 → `send_daily_email.py`가 SMTP(Gmail)로 발송
+  - 수신자: `mailing_list.txt` 우선 (현재 jongho0708.lee@samsung.com 1명, 검증 후 확장 예정), 없으면 `MAIL_RECIPIENTS` 환경변수 fallback
+  - GitHub Secret 필요: `DASHBOARD_PASSWORD`, `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `MAIL_RECIPIENTS` (선택)
+  - workflow_dispatch 입력 `test_recipient` 제공 시 메일링 리스트 무시하고 그 1명에게만 발송
 
 ## 신라 사이트 연동
 

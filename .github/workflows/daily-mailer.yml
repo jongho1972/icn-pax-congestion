@@ -1,0 +1,52 @@
+name: Daily mailer
+
+on:
+  schedule:
+    # 매일 18:30 KST = 09:30 UTC
+    - cron: '30 9 * * *'
+  workflow_dispatch:
+    inputs:
+      test_recipient:
+        description: '테스트 수신자 1명 (입력 시 메일링 리스트 대신 이 주소로만 발송)'
+        required: false
+        default: ''
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  mail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install python-dotenv playwright
+          playwright install --with-deps chromium
+
+      - name: Capture dashboard
+        env:
+          DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+        run: python capture_dashboard.py dashboard.png
+
+      - name: Send daily email
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          MAIL_RECIPIENTS: ${{ inputs.test_recipient != '' && inputs.test_recipient || secrets.MAIL_RECIPIENTS }}
+        run: python send_daily_email.py dashboard.png
+
+      - name: Upload artifact (debug)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-snapshot
+          path: dashboard.png
+          retention-days: 7
