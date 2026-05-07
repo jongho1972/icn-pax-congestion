@@ -53,7 +53,7 @@ def send(image_path: Path, recipients: list[str], date_str: str) -> None:
 
     msg = MIMEMultipart("related")
     msg["Subject"] = f"인천공항 출국장 예상 승객수 ({date_str})"
-    msg["From"] = formataddr(("인천공항 출국장 자동발송", user))
+    msg["From"] = formataddr(("인천공항점(마케팅)", user))
     msg["To"] = ", ".join(recipients)
 
     alt = MIMEMultipart("alternative")
