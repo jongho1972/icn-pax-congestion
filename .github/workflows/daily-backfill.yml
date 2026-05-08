@@ -45,6 +45,34 @@ jobs:
           fi
           git diff --cached --stat
           git commit -m "data: backfill $(TZ=Asia/Seoul date +%Y%m%d-%H%M)KST"
-          git push origin main
+          # push 충돌 시 rebase 후 1회 재시도
+          git push origin main || (git pull --rebase origin main && git push origin main)
           echo "RESULT: PUSHED"
           ls Daily_Data/ | wc -l
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          import os, smtplib, ssl
+          from email.message import EmailMessage
+          user = os.environ.get("GMAIL_USER")
+          pw = os.environ.get("GMAIL_APP_PASSWORD")
+          if not user or not pw:
+              print("[notify] secrets missing; skip"); raise SystemExit(0)
+          msg = EmailMessage()
+          msg["From"] = f"인천공항점(마케팅) <{user}>"
+          msg["To"] = "jongho1972@gmail.com"
+          msg["Subject"] = "[ICN 출국장] daily-backfill 실패"
+          msg.set_content(
+              "daily-backfill workflow가 실패했습니다. GitHub Actions 로그를 확인해주세요.\n"
+              "https://github.com/jongho1972/icn-pax-congestion/actions"
+          )
+          with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context()) as s:
+              s.login(user, pw)
+              s.send_message(msg)
+          print("[notify] sent")
+          PY

@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import hmac
 import json
+import logging
 import os
+import threading
 import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -12,10 +14,14 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logger = logging.getLogger("icn_pax_congestion")
 
 from icn_utils.aggregator import (
     WEEKDAY_KR, daily_totals, fmt_peak_hour, hourly_per_gate, hourly_t1_t2,
@@ -41,45 +47,69 @@ templates = Jinja2Templates(directory=str(BASE / "templates"))
 
 # ---------- TTL 캐시 (메모리만; Render 컨테이너 휘발성 + 멀티워커 race 회피) ----------
 _CACHE: dict[str, tuple[float, object]] = {}
+_CACHE_LOCK = threading.Lock()
+_BUILD_LOCK = threading.Lock()  # dogpile 방지 (동시 빌드 1회로 합침)
 _TTL_SECONDS = 60 * 60 * 48  # 48시간 (cron 누락 안전 마진)
 
 
 def _cache_get(key: str):
-    if key not in _CACHE:
-        return None
-    ts, val = _CACHE[key]
-    if time.time() - ts > _TTL_SECONDS:
-        return None
-    return val
+    with _CACHE_LOCK:
+        if key not in _CACHE:
+            return None
+        ts, val = _CACHE[key]
+        if time.time() - ts > _TTL_SECONDS:
+            return None
+        return val
 
 
 def _cache_set(key: str, val) -> None:
-    _CACHE[key] = (time.time(), val)
+    with _CACHE_LOCK:
+        _CACHE[key] = (time.time(), val)
+
+
+def _cache_clear() -> None:
+    with _CACHE_LOCK:
+        _CACHE.clear()
 
 
 # ---------- 간이 IP 레이트 리밋 (export-raw DoS 방어) ----------
 _RATE_BUCKET: dict[str, list[float]] = {}
+_RATE_LOCK = threading.Lock()
 
 
 def _rate_check(ip: str, max_per_window: int = 5, window_seconds: int = 300) -> bool:
     now = time.time()
-    bucket = _RATE_BUCKET.setdefault(ip, [])
-    bucket[:] = [t for t in bucket if now - t < window_seconds]
-    if len(bucket) >= max_per_window:
-        return False
-    bucket.append(now)
-    return True
+    with _RATE_LOCK:
+        bucket = _RATE_BUCKET.setdefault(ip, [])
+        bucket[:] = [t for t in bucket if now - t < window_seconds]
+        if len(bucket) >= max_per_window:
+            return False
+        bucket.append(now)
+        return True
 
 
 # ---------- 데이터 빌드 ----------
 def build_payload(service_key: str | None) -> dict:
-    """전체 페이지 페이로드 생성. 캐시 키는 오늘 날짜."""
+    """전체 페이지 페이로드 생성. 캐시 키는 오늘 날짜.
+
+    dogpile 락으로 동시 빌드를 1회로 합쳐 외부 API 중복 호출과 메모리 폭증 방지.
+    """
     today = datetime.now(KST).date()
     cache_key = today.strftime("%Y%m%d")
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached
 
+    with _BUILD_LOCK:
+        # 락 획득 후 재확인 — 대기 중에 다른 스레드가 빌드를 끝냈을 수 있음
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return cached
+        return _build_payload_locked(service_key, today)
+
+
+def _build_payload_locked(service_key: str | None, today: date) -> dict:
+    cache_key = today.strftime("%Y%m%d")
     tomorrow = today + timedelta(days=1)
     future_end = today + timedelta(days=2)  # D+2 — airport.kr 스크래핑이 D+2까지 제공
     range_start = today - timedelta(days=DAILY_TREND_DAYS - 3)  # D+2까지 포함하기 위해 보정
@@ -97,7 +127,8 @@ def build_payload(service_key: str | None) -> dict:
     if (today_df.empty or tomorrow_df.empty) and service_key:
         try:
             live = fetch_live(service_key)
-        except Exception:
+        except Exception as exc:
+            logger.warning("fetch_live failed, falling back to empty: %r", exc)
             live = {}
         if today_df.empty and today_ymd in live:
             today_df = live[today_ymd]
@@ -218,19 +249,20 @@ def build_payload(service_key: str | None) -> dict:
 
 @app.on_event("startup")
 def warm_cache_on_startup() -> None:
-    _CACHE.clear()
+    _cache_clear()
     service_key = os.environ.get("INCHEON_API_KEY", "")
     try:
         build_payload(service_key)
+        logger.info("startup cache warmed")
     except Exception as exc:
-        print(f"[warm_cache_on_startup] build skipped: {exc!r}")
+        logger.warning("startup cache warm skipped: %r", exc)
 
 
 # ---------- 라우트 ----------
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     service_key = os.environ.get("INCHEON_API_KEY", "")
-    payload = build_payload(service_key)
+    payload = await run_in_threadpool(build_payload, service_key)
 
     today = datetime.now(KST).date()
     tomorrow = today + timedelta(days=1)
@@ -277,11 +309,15 @@ async def refresh_cache(x_refresh_token: str | None = Header(None)):
     service_key = os.environ.get("INCHEON_API_KEY", "")
     if not service_key:
         raise HTTPException(500, "INCHEON_API_KEY not set")
-    _CACHE.clear()
+    _cache_clear()
     try:
-        payload = build_payload(service_key)
+        payload = await run_in_threadpool(build_payload, service_key)
     except Exception as exc:
+        logger.error("refresh build failed: %r", exc)
         raise HTTPException(502, f"build failed: {exc!r}")
+    logger.info("refresh ok: today=%s tomorrow=%s",
+                payload["today"]["kpi"]["T1"] + payload["today"]["kpi"]["T2"],
+                payload["tomorrow"]["kpi"]["T1"] + payload["tomorrow"]["kpi"]["T2"])
     today_kpi = payload["today"]["kpi"]
     tomorrow_kpi = payload["tomorrow"]["kpi"]
     return {

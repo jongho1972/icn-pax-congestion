@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import logging
 import os
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -19,9 +20,33 @@ from typing import Optional
 
 import pandas as pd
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+logger = logging.getLogger("icn_pax_congestion.data_loader")
 
 KST = ZoneInfo("Asia/Seoul")
-API_URL = "http://apis.data.go.kr/B551177/passgrAnncmt/getPassgrAnncmt"
+# https로 통일 — 인천공항 OpenAPI는 TLS 지원함
+API_URL = "https://apis.data.go.kr/B551177/passgrAnncmt/getPassgrAnncmt"
+
+
+def _make_session() -> requests.Session:
+    """5xx·504에 자동 재시도 + 지수 백오프."""
+    s = requests.Session()
+    retry = Retry(
+        total=3,
+        backoff_factor=1.0,  # 1s, 2s, 4s
+        status_forcelist=(500, 502, 503, 504),
+        allowed_methods=("GET",),
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    s.mount("https://", adapter)
+    s.mount("http://", adapter)
+    return s
+
+
+_SESSION = _make_session()
 
 NUMERIC_COLS = [
     "t1eg1", "t1eg2", "t1eg3", "t1eg4", "t1egsum1",
@@ -50,7 +75,7 @@ def _fetch_api(service_key: str, selectdate: int) -> pd.DataFrame:
         "selectdate": selectdate,
         "numOfRows": 100,
     }
-    r = requests.get(API_URL, params=params, timeout=30)
+    r = _SESSION.get(API_URL, params=params, timeout=30)
     r.raise_for_status()
     try:
         body = r.json()["response"]["body"]
@@ -130,9 +155,11 @@ def fetch_live(service_key: str) -> dict[str, pd.DataFrame]:
     for sel in (0, 1):
         try:
             df = _fetch_api(service_key, sel)
-        except Exception:
+        except Exception as exc:
+            logger.warning("fetch_live selectdate=%d failed: %r", sel, exc)
             continue
         if df.empty:
+            logger.info("fetch_live selectdate=%d returned empty (likely D+1 not yet published)", sel)
             continue
         ymd = str(df["adate"].iloc[0])
         out[ymd] = df
