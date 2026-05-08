@@ -1,12 +1,11 @@
 """인천공항 출국장 혼잡도 대시보드 (FastAPI + Jinja2)."""
 from __future__ import annotations
 
+import hmac
 import json
 import os
-import pickle
 import time
 from datetime import date, datetime, timedelta
-from io import BytesIO
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -40,10 +39,9 @@ app.add_middleware(GZipMiddleware, minimum_size=500)
 app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE / "templates"))
 
-# ---------- TTL 캐시 (메모리 + 디스크) ----------
+# ---------- TTL 캐시 (메모리만; Render 컨테이너 휘발성 + 멀티워커 race 회피) ----------
 _CACHE: dict[str, tuple[float, object]] = {}
 _TTL_SECONDS = 60 * 60 * 48  # 48시간 (cron 누락 안전 마진)
-CACHE_FILE = Path("/tmp") / "icn_pax_congestion_cache.pkl"
 
 
 def _cache_get(key: str):
@@ -57,30 +55,20 @@ def _cache_get(key: str):
 
 def _cache_set(key: str, val) -> None:
     _CACHE[key] = (time.time(), val)
-    _save_disk_cache()
 
 
-def _load_disk_cache() -> None:
-    if not CACHE_FILE.exists():
-        return
-    try:
-        with CACHE_FILE.open("rb") as f:
-            data = pickle.load(f)
-        if isinstance(data, dict):
-            _CACHE.update(data)
-    except Exception as exc:
-        print(f"[disk cache load] skipped: {exc!r}")
+# ---------- 간이 IP 레이트 리밋 (export-raw DoS 방어) ----------
+_RATE_BUCKET: dict[str, list[float]] = {}
 
 
-def _save_disk_cache() -> None:
-    try:
-        CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        tmp = CACHE_FILE.with_suffix(".pkl.tmp")
-        with tmp.open("wb") as f:
-            pickle.dump(_CACHE, f)
-        tmp.replace(CACHE_FILE)
-    except Exception as exc:
-        print(f"[disk cache save] skipped: {exc!r}")
+def _rate_check(ip: str, max_per_window: int = 5, window_seconds: int = 300) -> bool:
+    now = time.time()
+    bucket = _RATE_BUCKET.setdefault(ip, [])
+    bucket[:] = [t for t in bucket if now - t < window_seconds]
+    if len(bucket) >= max_per_window:
+        return False
+    bucket.append(now)
+    return True
 
 
 # ---------- 데이터 빌드 ----------
@@ -230,15 +218,6 @@ def build_payload(service_key: str | None) -> dict:
 
 @app.on_event("startup")
 def warm_cache_on_startup() -> None:
-    # 컨테이너 시작 시 디스크 캐시 무효화 — 새 pkl 파일(backfill·web 스크래퍼 결과)
-    # 또는 코드 변경이 즉시 반영되도록. 디스크 캐시는 /api/refresh가 보존용으로
-    # 갱신해 컨테이너 재시작 후 첫 요청 지연을 줄이는 용도지만, 새 deploy 직후엔
-    # 반드시 stale일 가능성이 있으므로 시작 시 비운다.
-    try:
-        if CACHE_FILE.exists():
-            CACHE_FILE.unlink()
-    except Exception as exc:
-        print(f"[warm_cache_on_startup] disk cache unlink skipped: {exc!r}")
     _CACHE.clear()
     service_key = os.environ.get("INCHEON_API_KEY", "")
     try:
@@ -291,7 +270,9 @@ async def index(request: Request):
 @app.post("/api/refresh")
 async def refresh_cache(x_refresh_token: str | None = Header(None)):
     expected = os.environ.get("REFRESH_TOKEN", "")
-    if expected and x_refresh_token != expected:
+    if not expected:
+        raise HTTPException(503, "refresh disabled (REFRESH_TOKEN not set)")
+    if not x_refresh_token or not hmac.compare_digest(x_refresh_token, expected):
         raise HTTPException(401, "invalid token")
     service_key = os.environ.get("INCHEON_API_KEY", "")
     if not service_key:
@@ -317,8 +298,13 @@ async def healthz():
 
 
 @app.get("/api/export-raw")
-async def export_raw(start: str, end: str):
-    """start/end (YYYYMMDD) 범위 raw CSV 다운로드."""
+async def export_raw(request: Request, start: str, end: str):
+    """start/end (YYYYMMDD) 범위 raw CSV 다운로드 — 90일 상한 + 5회/5분 IP 레이트 리밋."""
+    client_ip = (request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+                 or (request.client.host if request.client else "unknown"))
+    if not _rate_check(client_ip):
+        raise HTTPException(429, "요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.")
+
     try:
         start_dt = datetime.strptime(start, "%Y%m%d").date()
         end_dt = datetime.strptime(end, "%Y%m%d").date()
@@ -330,22 +316,13 @@ async def export_raw(start: str, end: str):
         start_dt = DATA_START_DATE
     if end_dt < DATA_START_DATE:
         raise HTTPException(404, "해당 기간의 데이터가 없습니다.")
-    if (end_dt - start_dt).days > 366:
-        raise HTTPException(400, "최대 366일 범위까지 내보낼 수 있습니다.")
+    if (end_dt - start_dt).days > 90:
+        raise HTTPException(400, "최대 90일 범위까지 내보낼 수 있습니다.")
 
     daily_map = load_range(str(DAILY_DIR), start_dt, end_dt)
-    parts = []
-    for ymd, (df, src) in sorted(daily_map.items()):
-        if df is None or df.empty:
-            continue
-        d = df.copy()
-        d["source"] = src
-        parts.append(d)
-    if not parts:
+    if not any((df is not None and not df.empty) for df, _ in daily_map.values()):
         raise HTTPException(404, "해당 기간의 데이터가 없습니다.")
-    out = pd.concat(parts, ignore_index=True)
 
-    # 컬럼명을 가공 후 기준으로 변환 (API 원본 → 한국어 라벨, 출국만 유지)
     rename_map = {
         "adate": "날짜",
         "atime": "시간대",
@@ -362,20 +339,28 @@ async def export_raw(start: str, end: str):
         "t1eg1", "t1eg2", "t1eg3", "t1eg4", "t1egsum1",
         "t2eg1", "t2eg2", "t2egsum1",
     ]
-    out = out.drop(columns=drop_cols, errors="ignore")
-    out = out.rename(columns=rename_map)
 
-    buf = BytesIO()
-    out.to_csv(buf, index=False, encoding="utf-8-sig")
-    size = buf.tell()
-    buf.seek(0)
+    def csv_chunks():
+        # 일자별 chunk 단위 yield → 메모리에 전체 concat 적재 회피 (OOM 방어)
+        yield "﻿"  # UTF-8 BOM (Excel 한글 호환)
+        first = True
+        for ymd in sorted(daily_map.keys()):
+            df, src = daily_map[ymd]
+            if df is None or df.empty:
+                continue
+            d = df.copy()
+            d["source"] = src
+            d = d.drop(columns=drop_cols, errors="ignore")
+            d = d.rename(columns=rename_map)
+            yield d.to_csv(index=False, header=first, encoding="utf-8")
+            first = False
+
     fname = f"icn_pax_congestion_{start_dt.strftime('%Y%m%d')}_{end_dt.strftime('%Y%m%d')}.csv"
     return StreamingResponse(
-        buf,
+        csv_chunks(),
         media_type="text/csv; charset=utf-8-sig",
         headers={
             "Content-Disposition": f'attachment; filename="{fname}"',
-            "Content-Length": str(size),
             "Cache-Control": "no-store",
         },
     )
