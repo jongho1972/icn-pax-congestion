@@ -301,11 +301,13 @@ async def refresh_cache(x_refresh_token: str | None = Header(None)):
         payload = build_payload(service_key)
     except Exception as exc:
         raise HTTPException(502, f"build failed: {exc!r}")
+    today_kpi = payload["today"]["kpi"]
+    tomorrow_kpi = payload["tomorrow"]["kpi"]
     return {
         "ok": True,
         "fetched_at": payload["fetched_at"],
-        "today_total": payload["today"]["kpi"]["total"],
-        "tomorrow_total": payload["tomorrow"]["kpi"]["total"],
+        "today_total": today_kpi["T1"] + today_kpi["T2"],
+        "tomorrow_total": tomorrow_kpi["T1"] + tomorrow_kpi["T2"],
     }
 
 
