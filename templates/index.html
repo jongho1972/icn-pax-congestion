@@ -419,12 +419,22 @@
     }
     table.daily td.label { font-weight: 600; }
     table.daily tr.future-row { background: var(--future-bg); }
-    table.daily tr.tomorrow-row { background: #EEF4FF; font-weight: 700; }
+    table.daily tr.tomorrow-row { background: transparent; font-weight: 700; }
+    table.daily tr.tomorrow-row td:first-child {
+      box-shadow: inset 4px 0 0 var(--t1);
+    }
     table.daily tr.tomorrow-row td.label::after { content: ' (내일)'; font-size: 11px; color: var(--t1); font-weight: 700; }
     table.daily td.red, table.daily th.red { color: var(--red-day); }
     table.daily td.t1 { color: var(--t1); }
     table.daily td.t2 { color: var(--t2); }
     table.daily td.dash { color: var(--text-light); }
+    /* 모바일: 피크 시간/객수 2열을 1열 통합으로 압축 (8열 → 6열) */
+    table.daily th.peak-combined, table.daily td.peak-combined { display: none; }
+    @media (max-width: 720px) {
+      table.daily th.peak-h, table.daily td.peak-h,
+      table.daily th.peak-t, table.daily td.peak-t { display: none; }
+      table.daily th.peak-combined, table.daily td.peak-combined { display: table-cell; }
+    }
 
     /* 푸터 */
     .footnote {
@@ -488,6 +498,18 @@
       cursor: pointer;
     }
     .floor-svg .dg-zone:hover .dg-rect { stroke-width: 3; }
+    /* 3-state 분리: mobility=빗금 패턴 / inactive=점선 테두리 / no-data=무채색 */
+    .floor-svg .dg-zone.is-mobility .dg-rect {
+      fill: url(#hatchPattern) !important;
+      stroke: #909090; stroke-width: 1.5;
+    }
+    .floor-svg .dg-zone.is-inactive .dg-rect {
+      stroke-dasharray: 6 4; stroke: #B0B0B0;
+    }
+    .floor-svg .dg-zone.is-nodata .dg-rect {
+      fill: rgba(160,160,160,0.10) !important;
+      stroke: #C8C8C8;
+    }
     .floor-svg .badge-bg {
       fill: #fff; stroke: #8C0023; stroke-width: 1.4;
     }
@@ -519,9 +541,15 @@
     }
     .floor-legend-bar {
       flex: 1; height: 10px; border-radius: 5px;
-      background: linear-gradient(to right, rgba(140,0,35,0.10), rgba(140,0,35,0.85));
+      background: linear-gradient(to right, rgba(31,111,235,0.10), rgba(31,111,235,0.85));
       border: 1px solid var(--border);
     }
+    .floor-legend-bar.t2 {
+      background: linear-gradient(to right, rgba(194,100,32,0.10), rgba(194,100,32,0.85));
+    }
+    .floor-legend-key { font-weight: 700; }
+    .floor-legend-key.t1 { color: var(--t1); }
+    .floor-legend-key.t2 { color: var(--t2); }
     .floor-legend b { color: var(--text-mid); font-weight: 700; }
 
     @media (max-width: 720px) {
@@ -635,6 +663,12 @@
     <div class="chart-card floor-map-card">
       <h3 class="floor-map-title">T1</h3>
       <svg class="floor-svg" id="floor-map-t1" viewBox="0 40 918 540" preserveAspectRatio="xMidYMid meet" role="img" aria-label="T1 출국장 평면도">
+        <defs>
+          <pattern id="hatchPattern" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
+            <rect width="8" height="8" fill="rgba(160,160,160,0.18)"/>
+            <line x1="0" y1="0" x2="0" y2="8" stroke="#909090" stroke-width="1.4"/>
+          </pattern>
+        </defs>
         <image href="/static/floormap/t1.jpeg" x="0" y="0" width="918" height="688"/>
         <!-- 출국장 6번 (서편 끝, 카운터 N) — 도면 라벨 x ≈ 50 -->
         <g class="dg-zone" data-key="t1dg6">
@@ -745,7 +779,10 @@
 
     <div class="floor-legend">
       <span>색상 강도 = 이용객수</span>
-      <div class="floor-legend-bar"></div>
+      <span class="floor-legend-key t1">T1</span>
+      <div class="floor-legend-bar" aria-hidden="true"></div>
+      <span class="floor-legend-key t2">T2</span>
+      <div class="floor-legend-bar t2" aria-hidden="true"></div>
       <span>0 ~ <b id="legend-max">—</b>명</span>
     </div>
 
@@ -766,11 +803,13 @@
             <th scope="col" class="label">날짜</th>
             <th scope="col" class="dow">요일</th>
             <th scope="col">T1</th>
-            <th scope="col">T1 피크 시간</th>
-            <th scope="col">T1 피크 객수</th>
+            <th scope="col" class="peak-h">T1 피크 시간</th>
+            <th scope="col" class="peak-t">T1 피크 객수</th>
+            <th scope="col" class="peak-combined">T1 피크</th>
             <th scope="col">T2</th>
-            <th scope="col">T2 피크 시간</th>
-            <th scope="col">T2 피크 객수</th>
+            <th scope="col" class="peak-h">T2 피크 시간</th>
+            <th scope="col" class="peak-t">T2 피크 객수</th>
+            <th scope="col" class="peak-combined">T2 피크</th>
           </tr>
         </thead>
         <tbody>
@@ -779,11 +818,13 @@
             <td class="label{% if r.is_red %} red{% endif %}">{{ r.label }}</td>
             <td class="dow{% if r.is_red %} red{% endif %}">{{ r.weekday }}</td>
             <td class="t1">{% if r.T1 > 0 %}{{ "{:,}".format(r.T1) }}{% else %}<span class="dash">—</span>{% endif %}</td>
-            <td class="t1">{{ r.peak_hour_T1 }}</td>
-            <td class="t1">{% if r.peak_total_T1 > 0 %}{{ "{:,}".format(r.peak_total_T1) }}{% else %}<span class="dash">—</span>{% endif %}</td>
+            <td class="t1 peak-h">{{ r.peak_hour_T1 }}</td>
+            <td class="t1 peak-t">{% if r.peak_total_T1 > 0 %}{{ "{:,}".format(r.peak_total_T1) }}{% else %}<span class="dash">—</span>{% endif %}</td>
+            <td class="t1 peak-combined">{% if r.peak_total_T1 > 0 %}{{ r.peak_hour_T1 }} <span style="color:var(--text-light);font-weight:500">({{ "{:,}".format(r.peak_total_T1) }})</span>{% else %}<span class="dash">—</span>{% endif %}</td>
             <td class="t2">{% if r.T2 > 0 %}{{ "{:,}".format(r.T2) }}{% else %}<span class="dash">—</span>{% endif %}</td>
-            <td class="t2">{{ r.peak_hour_T2 }}</td>
-            <td class="t2">{% if r.peak_total_T2 > 0 %}{{ "{:,}".format(r.peak_total_T2) }}{% else %}<span class="dash">—</span>{% endif %}</td>
+            <td class="t2 peak-h">{{ r.peak_hour_T2 }}</td>
+            <td class="t2 peak-t">{% if r.peak_total_T2 > 0 %}{{ "{:,}".format(r.peak_total_T2) }}{% else %}<span class="dash">—</span>{% endif %}</td>
+            <td class="t2 peak-combined">{% if r.peak_total_T2 > 0 %}{{ r.peak_hour_T2 }} <span style="color:var(--text-light);font-weight:500">({{ "{:,}".format(r.peak_total_T2) }})</span>{% else %}<span class="dash">—</span>{% endif %}</td>
           </tr>
         {% endfor %}
         </tbody>
@@ -918,8 +959,8 @@
       x: hourTicks(),
       y: P.mtd_hourly.T1,
       type: 'scatter', mode: 'lines',
-      line: { color: '#1F6FEB', width: 2, dash: 'dot' },
-      opacity: 0.7,
+      line: { color: '#9AA0A6', width: 1.5, dash: 'dot' },
+      opacity: 0.85,
       name: 'MTD',
     },
   ], Object.assign({}, COMMON_LAYOUT, {
@@ -941,8 +982,8 @@
       x: hourTicks(),
       y: P.mtd_hourly.T2,
       type: 'scatter', mode: 'lines',
-      line: { color: '#C26420', width: 2, dash: 'dot' },
-      opacity: 0.7,
+      line: { color: '#9AA0A6', width: 1.5, dash: 'dot' },
+      opacity: 0.85,
       name: 'MTD',
     },
   ], Object.assign({}, COMMON_LAYOUT, {
@@ -962,13 +1003,14 @@
     t2dg1: 'T2 1번 출국장 (동편, 카운터 A~D)',
     t2dg2: 'T2 2번 출국장 (서편, 카운터 E~H)',
   };
-  // rgba(140,0,35) 신라 크림슨, opacity 0.10 ~ 0.78
+  // T1=청색계(31,111,235), T2=주황계(194,100,32) — 본문 차트 토큰과 일치
   var FILL_MIN = 0.10, FILL_MAX = 0.78;
 
-  function fillForRatio(t) {
+  function fillForRatio(t, key) {
     var clamp = Math.max(0, Math.min(1, t));
     var alpha = FILL_MIN + (FILL_MAX - FILL_MIN) * clamp;
-    return 'rgba(140,0,35,' + alpha.toFixed(3) + ')';
+    var rgb = (key && key.indexOf('t2') === 0) ? '194,100,32' : '31,111,235';
+    return 'rgba(' + rgb + ',' + alpha.toFixed(3) + ')';
   }
 
   // 시간대 그룹 정의 (06~12 오전 / 12~18 오후 / 18~22 저녁 / 22~06 심야)
@@ -1023,17 +1065,27 @@
       var v = values[k];
       var mtdH = mtdValues[k];
       var t = max > 0 ? v / max : 0;
-      var rect = document.querySelector('.dg-zone[data-key="'+k+'"] .dg-rect');
-      var paxText = document.querySelector('.dg-zone[data-key="'+k+'"] .dg-pax');
-      var mtdText = document.querySelector('.dg-zone[data-key="'+k+'"] .dg-mtd');
-      var deltaText = document.querySelector('.dg-zone[data-key="'+k+'"] .dg-delta');
-      var titleEl = document.querySelector('.dg-zone[data-key="'+k+'"] > title');
-
-      if (rect) rect.setAttribute('fill', max > 0 ? fillForRatio(t) : 'rgba(160,160,160,0.10)');
+      var zoneEl = document.querySelector('.dg-zone[data-key="'+k+'"]');
+      var rect = zoneEl ? zoneEl.querySelector('.dg-rect') : null;
+      var paxText = zoneEl ? zoneEl.querySelector('.dg-pax') : null;
+      var mtdText = zoneEl ? zoneEl.querySelector('.dg-mtd') : null;
+      var deltaText = zoneEl ? zoneEl.querySelector('.dg-delta') : null;
+      var titleEl = zoneEl ? zoneEl.querySelector('title') : null;
 
       // T1 6번 = 교통약자 우대 출구 (공식 가이드: 혼잡도 집계 제외)
       var isMobilityGate = (k === 't1dg6');
       var inactive = (v === 0 && mtdH === 0);
+      var noData = (max === 0);
+
+      // 3-state 시각 분리: mobility(빗금) / inactive(점선 테두리) / nodata(무채색)
+      if (zoneEl) {
+        zoneEl.classList.toggle('is-mobility', isMobilityGate);
+        zoneEl.classList.toggle('is-inactive', !isMobilityGate && !noData && inactive);
+        zoneEl.classList.toggle('is-nodata', !isMobilityGate && noData);
+      }
+      if (rect && !isMobilityGate && !noData) {
+        rect.setAttribute('fill', fillForRatio(t, k));
+      }
       if (paxText) {
         if (isMobilityGate) {
           paxText.textContent = '교통약자';
