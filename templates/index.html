@@ -397,6 +397,11 @@
 
     /* 표 */
     .table-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+    .table-wrap:focus-visible { outline: 2px solid var(--t1); outline-offset: 2px; }
+    .visually-hidden {
+      position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
     table.daily {
       width: 100%; border-collapse: collapse;
       font-size: 13px; font-variant-numeric: tabular-nums;
@@ -548,8 +553,12 @@
         데이터 기준 : <b>{{ p.fetched_at }}</b><br>
         활용 데이터 : <b>{{ p.data_period }}</b>
       </div>
-      <button id="copy-btn" class="action-btn" type="button">📋 이미지 복사</button>
-      <button id="export-btn" class="action-btn secondary" type="button" onclick="openExportModal()">📥 Raw Data 저장</button>
+      <button id="copy-btn" class="action-btn" type="button" aria-label="대시보드 이미지를 클립보드에 복사">
+        <span aria-hidden="true">📋</span> 이미지 복사
+      </button>
+      <button id="export-btn" class="action-btn secondary" type="button" onclick="openExportModal()" aria-label="원본 데이터를 CSV 파일로 다운로드">
+        <span aria-hidden="true">📥</span> Raw Data 저장
+      </button>
     </div>
   </div>
 
@@ -749,18 +758,19 @@
   <!-- 일자별 표 (평면도 다음) -->
   <section>
     <h2 class="section-title">일자별</h2>
-    <div class="table-wrap">
+    <div class="table-wrap" role="region" tabindex="0" aria-label="일자별 출국장 이용객 표">
       <table class="daily">
+        <caption class="visually-hidden">D-29부터 D+1까지 일자별 T1·T2 총 이용객수와 피크 시간/객수</caption>
         <thead>
           <tr>
-            <th class="label">날짜</th>
-            <th class="dow">요일</th>
-            <th>T1</th>
-            <th>T1 피크 시간</th>
-            <th>T1 피크 객수</th>
-            <th>T2</th>
-            <th>T2 피크 시간</th>
-            <th>T2 피크 객수</th>
+            <th scope="col" class="label">날짜</th>
+            <th scope="col" class="dow">요일</th>
+            <th scope="col">T1</th>
+            <th scope="col">T1 피크 시간</th>
+            <th scope="col">T1 피크 객수</th>
+            <th scope="col">T2</th>
+            <th scope="col">T2 피크 시간</th>
+            <th scope="col">T2 피크 객수</th>
           </tr>
         </thead>
         <tbody>
@@ -817,9 +827,11 @@
 
 <!-- Raw Data 다운로드 모달 -->
 <div id="exportModal" class="modal-backdrop" onclick="if(event.target===this) closeExportModal()">
-  <div class="modal" onclick="event.stopPropagation()">
-    <button type="button" class="modal-close" onclick="closeExportModal()" aria-label="닫기">✕</button>
-    <h2>Raw Data Download</h2>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle" onclick="event.stopPropagation()">
+    <button type="button" class="modal-close" onclick="closeExportModal()" aria-label="닫기">
+      <span aria-hidden="true">✕</span>
+    </button>
+    <h2 id="exportModalTitle">Raw Data Download</h2>
     <p>선택한 기간의 시간대별 출국장 예상 승객수 원본 데이터를 CSV 파일로 저장합니다. (최대 90일)</p>
     <div style="background:#FFFBE6;border:1px solid #FCEAA0;border-radius:6px;padding:10px 12px;margin:0 0 16px 0;font-size:12px;line-height:1.6;color:#7A5B00;">
       <b>⚠ 시간대별 출국장 예상 승객수 원본</b>입니다. <code>출처</code> 컬럼으로 d0=실측 / d1=예측 / web=스크래핑 / none=없음을 구분할 수 있습니다.
@@ -1066,11 +1078,25 @@
           deltaText.textContent = '';
         }
       }
-      if (titleEl) {
-        var sumAll = t1Sum + t2Sum;
-        var pct2 = sumAll > 0 ? Math.round(v / sumAll * 1000) / 10 : 0;
-        var mtdNote = (mtdH > 0) ? ' · 평균 ' + mtdH.toLocaleString() + '명' : '';
-        titleEl.textContent = MAP_LABEL[k] + ' — ' + v.toLocaleString() + '명 (점유율 ' + pct2 + '%)' + mtdNote;
+      // SVG <title> + 그룹 aria-label = SR/툴팁 양쪽 친화
+      var sumAll = t1Sum + t2Sum;
+      var pct2 = sumAll > 0 ? Math.round(v / sumAll * 1000) / 10 : 0;
+      var mtdNote = (mtdH > 0) ? ' · 평균 ' + mtdH.toLocaleString() + '명' : '';
+      var ariaText;
+      if (isMobilityGate) {
+        ariaText = MAP_LABEL[k] + ' — 교통약자 우대 출구, 혼잡도 집계 제외';
+      } else if (inactive) {
+        ariaText = MAP_LABEL[k] + ' — 미운영';
+      } else if (max === 0) {
+        ariaText = MAP_LABEL[k] + ' — 데이터 없음';
+      } else {
+        ariaText = MAP_LABEL[k] + ' — ' + v.toLocaleString() + '명 (점유율 ' + pct2 + '%)' + mtdNote;
+      }
+      if (titleEl) titleEl.textContent = ariaText;
+      var groupEl = document.querySelector('.dg-zone[data-key="'+k+'"]');
+      if (groupEl) {
+        groupEl.setAttribute('role', 'group');
+        groupEl.setAttribute('aria-label', ariaText);
       }
     });
 
@@ -1364,18 +1390,51 @@ function initExportPickers() {
   });
   _pickersInited = true;
 }
+// 모달 focus 관리 — 열기 직전 트리거 보존, 닫을 때 복원
+let _exportModalReturnFocus = null;
+function _focusableInModal() {
+  const m = document.querySelector("#exportModal .modal");
+  if (!m) return [];
+  return Array.from(m.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  ));
+}
 function openExportModal() {
+  _exportModalReturnFocus = document.activeElement;
   document.getElementById("exportModal").classList.add("open");
   loadFlatpickr().then(initExportPickers).catch((e) => console.warn("flatpickr load failed", e));
   document.getElementById("exportResult").textContent = "";
+  // 첫 포커스를 모달 안 첫 입력으로 이동
+  setTimeout(() => {
+    const first = _focusableInModal()[0];
+    if (first) first.focus();
+  }, 0);
 }
 function closeExportModal() {
   document.getElementById("exportModal").classList.remove("open");
+  if (_exportModalReturnFocus && typeof _exportModalReturnFocus.focus === "function") {
+    _exportModalReturnFocus.focus();
+  }
+  _exportModalReturnFocus = null;
 }
 document.addEventListener("keydown", (e) => {
+  const m = document.getElementById("exportModal");
+  const open = m && m.classList.contains("open");
+  if (!open) return;
   if (e.key === "Escape") {
-    const m = document.getElementById("exportModal");
-    if (m && m.classList.contains("open")) closeExportModal();
+    closeExportModal();
+    return;
+  }
+  // Tab focus trap
+  if (e.key === "Tab") {
+    const items = _focusableInModal();
+    if (items.length === 0) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault(); last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault(); first.focus();
+    }
   }
 });
 async function doExport(ev) {
