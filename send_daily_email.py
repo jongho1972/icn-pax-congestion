@@ -10,7 +10,7 @@ import argparse
 import os
 import smtplib
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -107,7 +107,7 @@ def main() -> int:
         print(f"이미지 파일이 없습니다: {args.image}", file=sys.stderr)
         return 1
 
-    today = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
+    target_date = (datetime.now(ZoneInfo("Asia/Seoul")) + timedelta(days=1)).strftime("%Y-%m-%d")
 
     if args.test:
         recipients = [os.environ["GMAIL_USER"]]
@@ -118,8 +118,8 @@ def main() -> int:
             return 1
 
     print(f"[MAIL] recipients (count={len(recipients)}): {recipients}", flush=True)
-    send(args.image, recipients, today)
-    print(f"발송 완료: {today} → {recipients}", flush=True)
+    send(args.image, recipients, target_date)
+    print(f"발송 완료: {target_date} → {recipients}", flush=True)
     return 0
 
 
