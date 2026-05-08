@@ -34,12 +34,14 @@ jobs:
         run: python3 backfill_web.py
 
       - name: Commit and push if changed
+        id: commit_push
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Daily_Data/
           if git diff --cached --quiet; then
             echo "RESULT: NO_CHANGES"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
             ls Daily_Data/ | wc -l
             exit 0
           fi
@@ -48,7 +50,20 @@ jobs:
           # push 충돌 시 rebase 후 1회 재시도
           git push origin main || (git pull --rebase origin main && git push origin main)
           echo "RESULT: PUSHED"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
           ls Daily_Data/ | wc -l
+
+      - name: Trigger Render deploy (23:30 KST run only, on actual push)
+        if: steps.commit_push.outputs.pushed == 'true' && github.event.schedule == '30 14 * * *'
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "::warning::RENDER_DEPLOY_HOOK_URL secret not set; skipping deploy trigger"
+            exit 0
+          fi
+          curl -fsSL -X POST "$RENDER_DEPLOY_HOOK" -o /dev/null -w "HTTP %{http_code}\n"
+          echo "Render deploy hook triggered"
 
       - name: Notify on failure
         if: failure()
