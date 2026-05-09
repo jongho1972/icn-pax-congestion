@@ -791,21 +791,21 @@
     {% if focus.total > 0 %}
       <div class="summary-hero-rows">
         <div class="summary-row total">
-          <span class="lbl">전체 출국객수</span>
+          <span class="lbl">전체 승객수</span>
           <span class="val">{{ "{:,}".format(focus.total) }}<span class="unit">명</span>{{ delta_chip(focus_delta.total, p.reserved.mtd.anchor_label) }}</span>
           <span class="mtd">
             {% if p.reserved.mtd.total > 0 %}({{ p.reserved.mtd.anchor_label }} MTD 평균 <b>{{ "{:,}".format(p.reserved.mtd.total) }}</b>명){% endif %}
           </span>
         </div>
         <div class="summary-row">
-          <span class="lbl">T1 출국객수</span>
+          <span class="lbl">T1 승객수</span>
           <span class="val">{{ "{:,}".format(focus.T1) }}<span class="unit">명</span>{{ delta_chip(focus_delta.T1, p.reserved.mtd.anchor_label) }}</span>
           <span class="mtd">
             {% if p.reserved.mtd.T1 > 0 %}({{ p.reserved.mtd.anchor_label }} MTD 평균 <b>{{ "{:,}".format(p.reserved.mtd.T1) }}</b>명){% endif %}
           </span>
         </div>
         <div class="summary-row">
-          <span class="lbl">T2 출국객수</span>
+          <span class="lbl">T2 승객수</span>
           <span class="val">{{ "{:,}".format(focus.T2) }}<span class="unit">명</span>{{ delta_chip(focus_delta.T2, p.reserved.mtd.anchor_label) }}</span>
           <span class="mtd">
             {% if p.reserved.mtd.T2 > 0 %}({{ p.reserved.mtd.anchor_label }} MTD 평균 <b>{{ "{:,}".format(p.reserved.mtd.T2) }}</b>명){% endif %}
