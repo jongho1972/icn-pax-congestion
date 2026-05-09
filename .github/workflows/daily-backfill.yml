@@ -48,8 +48,10 @@ jobs:
           echo "pushed=true" >> "$GITHUB_OUTPUT"
           ls Daily_Data/ | wc -l
 
-      - name: Trigger Render deploy (23:30 KST run only, on actual push)
-        if: steps.commit_push.outputs.pushed == 'true' && github.event.schedule == '30 14 * * *'
+      - name: Trigger Render deploy (scheduled cron only, on actual push)
+        # 17:05 KST(D+1 발표 직후)와 23:30 KST(D-0 마감) 두 cron 모두 deploy 트리거
+        # → 운영 화면에 새 데이터를 6.5시간 지연 없이 즉시 반영
+        if: steps.commit_push.outputs.pushed == 'true' && (github.event.schedule == '30 14 * * *' || github.event.schedule == '5 8 * * *')
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
