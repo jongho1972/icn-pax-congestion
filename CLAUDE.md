@@ -6,15 +6,16 @@ airport.kr 공식 통계 페이지의 '엑셀 다운로드' 엔드포인트로 D
 
 | 파일 | 역할 |
 |------|------|
-| `main.py` | FastAPI 앱 — `/`, `/api/refresh` (POST, X-Refresh-Token), `/healthz`, `/api/export-raw`. 메모리 48시간 캐시 + dogpile 락 |
-| `templates/index.html` | Jinja2 템플릿 — 비번 게이트 + 시간대별 라인 2개 + 출국장 평면도 SVG 2개 + 노선별 종합 바 2개 + 노선별 시간대 stacked bar 2개 + 일자별 표 |
+| `main.py` | FastAPI 앱 — `/`, `/api/refresh` (POST, X-Refresh-Token), `/healthz`, `/api/export-raw`. 메모리 48시간 캐시 + dogpile 락. `ICN_TODAY_OVERRIDE=YYYYMMDD` 환경변수로 임의 일자 시뮬 가능 (디버그용) |
+| `templates/index.html` | Jinja2 템플릿 — 비번 게이트 + **핵심 요약 카드(SMS 동일 기준 + 환율 + ▲▼ MTD 대비)** + 출국장 평면도 SVG 2개 + 일자별 표 + 시간대별 라인 2개 + 도착지별(권역) 그룹바 2개 |
 | `icn_utils/excel_parser.py` | airport.kr 엑셀 9개 시트 파서 (시트별 함수 + `parse_terminal` 통합) |
+| `icn_utils/exchange_rate.py` | dutyfreemania.com에서 면세점 고시환율(USD/KRW) 스크래핑 (서울외국환중개 전일 고시 = 모든 면세점 공통) |
 | `icn_utils/data_loader.py` | `load_day(daily_dir, ymd)` → 통합 dict 반환. 단일 pkl 로드 |
-| `icn_utils/aggregator.py` | KPI·MTD·시간대·gate별·노선별(`route_matrix`/`route_summary`/`mtd_route`) 집계 |
-| `backfill_excel.py` | airport.kr xls 다운(인증 없음, GET 1회) → 9개 시트 파싱 → 통합 dict pkl 저장 |
-| `Daily_Data/` | 일자별 통합 pkl `passgr_YYYYMMDD.pkl` (T1+T2 9개 시트 통합) |
+| `icn_utils/aggregator.py` | KPI·MTD·시간대·gate별·노선별·예약합계(SMS 기준) 집계 + delta 계산 |
+| `backfill_excel.py` | airport.kr xls 다운(인증 없음, GET 1회) → 9개 시트 파싱 → 통합 dict pkl 저장 + 환율 동시 갱신 |
+| `Daily_Data/` | 일자별 통합 pkl `passgr_YYYYMMDD.pkl` + `exchange_rates.pkl` (환율 30+일치 누적) |
 | `Daily_Data/_archive_openapi/` | 구 OpenAPI 시절 pkl 보관 (사용 중지) |
-| `render.yaml` | Render 배포 설정 (python runtime, uvicorn) |
+| `render.yaml` | Render 배포 설정. **buildFilter 사용 금지** (컨테이너 데이터 동기화 부작용으로 2026-05-09 제거) |
 | `requirements.txt` | fastapi, uvicorn, jinja2, pandas, requests, **xlrd**, holidays |
 | `.env` | `REFRESH_TOKEN` (gitignore) |
 
@@ -68,12 +69,20 @@ airport.kr 공식 통계 페이지의 '엑셀 다운로드' 엔드포인트로 D
 
 ## 시각화
 
-1. **KPI 카드 2개**: 오늘 / 내일 — 총객수, T1·T2, 피크 시간대·객수
-2. **시간대별 차트** (T1·T2 분리): 내일 예상(실선) + MTD 평균(점선)
-3. **출국장 평면도 SVG 2개** (T1: 6개 zone — 5·6번은 동일 데이터 합산 표시, T2: 2개 zone)
-4. **노선별 종합 바 2개** (T1·T2): 7권역 그룹바 (내일 예상 vs MTD 평균)
-5. **노선별 시간대 stacked bar 2개** (T1·T2): 24시간 × 7권역 누적 분포
-6. **일자별 표**: 날짜·요일·T1·T2·피크 시간/객수, 오늘=파랑/미래=노랑/주말=빨강
+화면 전체가 **focus 일자**(`focus_is_tomorrow` flag)에 동기화됨:
+- 내일 데이터 발표됨(`reserved.tomorrow.total > 0`) → 카드/평면도/시간대별/도착지별 모두 **내일** 데이터
+- 미발표 → 모두 **오늘** 데이터로 fallback
+- 차트 trace 이름도 동적("오늘 예상" / "내일 예상")
+
+1. **핵심 요약 카드** (SMS 알림과 동일 기준 — 항공사 예약 출국, 환승객 포함):
+   - 전체/T1/T2 출국객수 + ▲▼ MTD 대비 변화율 + 환율 칩($1=₩XXX)
+   - 톤: 화이트 + 좌측 크림슨 strip + 골드 환율 칩
+2. **출국장 평면도 SVG 2개** (T1: 5번/2번/3번/4번/5·6번 5개 zone, T2: 1번/2번 2개 zone). 5·6번은 원본 엑셀 합산값 그대로 단일 박스
+3. **일자별 표**: 날짜·요일·T1·T2·피크 시간/객수, 오늘=파랑/미래=노랑/주말=빨강
+4. **시간대별 차트** (T1·T2 분리): MTD 평균(점선) + focus 일자(실선). y축 동일
+5. **도착지별 7권역 그룹바 2개** (T1·T2): MTD 평균 vs focus 일자, y축 통일
+
+각주: 데이터 출처 → 산출 방식 → 통계 기준(카드 vs 그 외) → 5·6번 합산 → 환율 출처 순.
 
 ## 로컬 실행
 
