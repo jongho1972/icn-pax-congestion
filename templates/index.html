@@ -891,7 +891,7 @@
     </div>
 
     <p class="section-note">
-      각 출국장의 내일 예상 승객수와 이번 달 평균. 색상이 진할수록 붐빔.
+      각 출국장의 {{ '내일' if has_tomorrow else '오늘' }} 예상 승객수와 이번 달 평균. 색상이 진할수록 붐빔.
       시간대 셀렉터로 오전·오후·저녁·심야 그룹별 분포도 확인 가능합니다.
     </p>
   </section>
@@ -1054,6 +1054,14 @@
   };
   var CONFIG = { displayModeBar: false, responsive: true };
 
+  // 화면 전체 기준 일자 — 핵심 요약 카드와 모든 통계가 같은 일자 사용
+  var FOCUS_TOMORROW = !!P.focus_is_tomorrow;
+  var FOCUS_LABEL = P.focus_label || (FOCUS_TOMORROW ? '내일 예상' : '오늘 예상');
+  var FOCUS_HOURLY = FOCUS_TOMORROW ? P.tomorrow_hourly : P.today_hourly;
+  var FOCUS_PER_GATE = FOCUS_TOMORROW ? P.tomorrow_per_gate : P.today_per_gate;
+  var FOCUS_ROUTE_T1 = FOCUS_TOMORROW ? P.tomorrow_route_summary_T1 : P.today_route_summary_T1;
+  var FOCUS_ROUTE_T2 = FOCUS_TOMORROW ? P.tomorrow_route_summary_T2 : P.today_route_summary_T2;
+
   function hourTicks() {
     // '08~09' 형태로 통일 (페이지 다른 곳과 일관)
     return P.today_hourly.hours.map(function(h) {
@@ -1066,13 +1074,13 @@
   // T1·T2 차트 y축 동일 범위 — 시각 비교 용이
   var hourlyMax = 0;
   ['T1','T2'].forEach(function(k) {
-    [P.tomorrow_hourly[k], P.mtd_hourly[k]].forEach(function(arr) {
+    [FOCUS_HOURLY[k], P.mtd_hourly[k]].forEach(function(arr) {
       (arr||[]).forEach(function(v) { if (v > hourlyMax) hourlyMax = v; });
     });
   });
   var sharedYRange = [0, Math.ceil(hourlyMax * 1.1 / 1000) * 1000];
 
-  // 시간대별 T1 — MTD 평균(점선) vs 내일 예상(실선) — 도착지별과 동일 순서
+  // 시간대별 T1 — MTD 평균(점선) vs FOCUS(실선) — 카드 focus 일자와 동기화
   Plotly.newPlot('chart-hourly-t1', [
     {
       x: hourTicks(),
@@ -1084,18 +1092,18 @@
     },
     {
       x: hourTicks(),
-      y: P.tomorrow_hourly.T1,
+      y: FOCUS_HOURLY.T1,
       type: 'scatter', mode: 'lines+markers',
       line: { color: '#1F6FEB', width: 2.5 },
       marker: { size: 5 },
-      name: '내일 예상',
+      name: FOCUS_LABEL,
     },
   ], Object.assign({}, COMMON_LAYOUT, {
     yaxis: { title: { text: '객수(명)', standoff: 8 }, range: sharedYRange, gridcolor: '#EAECF0' },
     xaxis: { tickfont: { size: 9 }, tickangle: -45 },
   }), CONFIG);
 
-  // 시간대별 T2 — MTD 평균(점선) vs 내일 예상(실선) — 도착지별과 동일 순서
+  // 시간대별 T2 — MTD 평균(점선) vs FOCUS(실선)
   Plotly.newPlot('chart-hourly-t2', [
     {
       x: hourTicks(),
@@ -1107,11 +1115,11 @@
     },
     {
       x: hourTicks(),
-      y: P.tomorrow_hourly.T2,
+      y: FOCUS_HOURLY.T2,
       type: 'scatter', mode: 'lines+markers',
       line: { color: '#C26420', width: 2.5 },
       marker: { size: 5 },
-      name: '내일 예상',
+      name: FOCUS_LABEL,
     },
   ], Object.assign({}, COMMON_LAYOUT, {
     yaxis: { title: { text: '객수(명)', standoff: 8 }, range: sharedYRange, gridcolor: '#EAECF0' },
@@ -1145,11 +1153,11 @@
       },
       {
         x: regions, y: summary.values,
-        type: 'bar', name: '내일 예상',
+        type: 'bar', name: FOCUS_LABEL,
         marker: { color: baseColor },
         text: summary.values.map(function(v) { return v > 0 ? v.toLocaleString() : ''; }),
         textposition: 'outside', textfont: { size: 10 },
-        hovertemplate: '%{x}<br>내일: %{y:,}명<extra></extra>',
+        hovertemplate: '%{x}<br>' + FOCUS_LABEL + ': %{y:,}명<extra></extra>',
       },
     ], Object.assign({}, COMMON_LAYOUT, {
       barmode: 'group', bargap: 0.25, bargroupgap: 0.08,
@@ -1184,9 +1192,9 @@
     }), CONFIG);
   }
 
-  // T1·T2 공통 y축 범위 (모든 권역 + MTD/내일 값에서 최댓값 기준)
+  // T1·T2 공통 y축 범위 (FOCUS + MTD 모든 권역 값에서 최댓값 기준)
   var routeMaxAll = 0;
-  [P.tomorrow_route_summary_T1, P.tomorrow_route_summary_T2,
+  [FOCUS_ROUTE_T1, FOCUS_ROUTE_T2,
    P.mtd_route_T1, P.mtd_route_T2].forEach(function(s) {
     var arr = (s && s.values) || [];
     arr.forEach(function(v) { if (v > routeMaxAll) routeMaxAll = v; });
@@ -1194,8 +1202,8 @@
   // 데이터 라벨이 막대 위에 출력되므로 ~18% 여유 + 1k 단위 ceil
   var routeYRange = [0, Math.max(1000, Math.ceil(routeMaxAll * 1.18 / 1000) * 1000)];
 
-  drawRouteSummary('chart-route-summary-t1', P.tomorrow_route_summary_T1, P.mtd_route_T1, '#1F6FEB', routeYRange);
-  drawRouteSummary('chart-route-summary-t2', P.tomorrow_route_summary_T2, P.mtd_route_T2, '#C26420', routeYRange);
+  drawRouteSummary('chart-route-summary-t1', FOCUS_ROUTE_T1, P.mtd_route_T1, '#1F6FEB', routeYRange);
+  drawRouteSummary('chart-route-summary-t2', FOCUS_ROUTE_T2, P.mtd_route_T2, '#C26420', routeYRange);
 
   // ===== 출국장 평면도 =====
   // SVG는 6개 zone이지만 데이터 소스(airport.kr 엑셀)는 5·6번을 합산해 제공한다.
@@ -1241,8 +1249,8 @@
 
   // period='all'이면 24시간 합계, 아니면 해당 시간대 그룹 합산 (MTD도 그룹 비율로 스케일)
   function paintMap(period) {
-    var perGate = P.tomorrow_per_gate || {};
-    var todayPerGate = P.today_per_gate || {};
+    var perGate = FOCUS_PER_GATE || {};   // 카드 focus 일자에 동기화
+    var todayPerGate = P.today_per_gate || {};  // 시간대 그룹 비율 계산용 (그대로)
     var gateMtd = P.gate_mtd || {};
     var hours = PERIOD_HOURS[period] || null;  // null = 전체
 

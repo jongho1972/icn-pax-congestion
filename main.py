@@ -252,6 +252,9 @@ def _build_payload_locked(today: date) -> dict:
             "mtd": reserved_mtd,
             "delta": reserved_delta,
         },
+        # 화면 전체 기준 일자 — 핵심 요약 카드와 다른 모든 통계가 같은 일자를 보도록
+        "focus_is_tomorrow": bool(reserved["tomorrow"]["total"] > 0),
+        "focus_label": "내일 예상" if reserved["tomorrow"]["total"] > 0 else "오늘 예상",
         # 면세점 고시환율 (USD/KRW)
         "exchange": exchange,
         "today": {
