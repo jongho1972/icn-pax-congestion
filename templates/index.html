@@ -333,7 +333,7 @@
       color: var(--slate-700); font-weight: 700;
       font-variant-numeric: tabular-nums;
     }
-    .summary-row .rate {
+    .summary-hero .rate {
       display: inline-flex; align-items: baseline; gap: 4px;
       padding: 4px 10px; border-radius: 4px;
       background: var(--blue-025);
@@ -343,7 +343,7 @@
       letter-spacing: -0.01em; white-space: nowrap;
       font-family: ui-monospace, "SF Mono", monospace;
     }
-    .summary-row .rate b { font-size: 14px; color: var(--navy-900); font-weight: 700; }
+    .summary-hero .rate b { font-size: 14px; color: var(--navy-900); font-weight: 700; }
     .summary-row .delta {
       display: inline-flex; align-items: baseline; gap: 3px;
       margin-left: 10px;
@@ -358,11 +358,14 @@
     .summary-row .delta.flat { color: var(--slate-400); }
     .summary-row .delta .arrow { font-size: 0.85em; line-height: 1; }
     .summary-hero-foot {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
       margin-top: 12px; padding-top: 10px;
       border-top: 1px solid var(--slate-100);
       font-size: 12px; color: var(--slate-500);
       letter-spacing: -0.005em;
     }
+    .summary-hero-foot .foot-note { color: var(--slate-500); }
     .summary-hero-empty {
       text-align: center; padding: 14px 0;
       font-size: 14px; color: var(--slate-500);
@@ -791,7 +794,7 @@
           <span class="lbl">전체 출국객수</span>
           <span class="val">{{ "{:,}".format(focus.total) }}<span class="unit">명</span>{{ delta_chip(focus_delta.total, p.reserved.mtd.anchor_label) }}</span>
           <span class="mtd">
-            {% if focus_rate %}<span class="rate">환율 $1 = ₩<b>{{ "{:,.1f}".format(focus_rate) }}</b></span>{% endif %}
+            {% if p.reserved.mtd.total > 0 %}({{ p.reserved.mtd.anchor_label }} MTD 평균 <b>{{ "{:,}".format(p.reserved.mtd.total) }}</b>명){% endif %}
           </span>
         </div>
         <div class="summary-row">
@@ -810,7 +813,8 @@
         </div>
       </div>
       <div class="summary-hero-foot">
-        ※ 항공사 예약 기준 (환승객 포함)
+        <span class="foot-note">※ 항공사 예약 기준 (환승객 포함)</span>
+        {% if focus_rate %}<span class="rate">환율 $1 = ₩<b>{{ "{:,.1f}".format(focus_rate) }}</b></span>{% endif %}
       </div>
     {% else %}
       <div class="summary-hero-empty">
