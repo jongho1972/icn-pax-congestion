@@ -31,7 +31,7 @@ logger = logging.getLogger("icn_pax_congestion")
 
 from icn_utils.aggregator import (
     ALL_ZONE_KEYS, REGIONS, T1_GATES, T2_GATES, WEEKDAY_KR,
-    daily_totals, fmt_peak_hour, hourly_per_gate, hourly_t1_t2,
+    _reserved_out, daily_totals, fmt_peak_hour, hourly_per_gate, hourly_t1_t2,
     kpi_summary, mtd_hourly_t1_t2, mtd_per_gate, mtd_reserved, mtd_route,
     mtd_summary, reserved_summary, route_matrix, route_summary,
 )
@@ -386,7 +386,7 @@ async def healthz():
 
 # ---------- raw CSV export ----------
 def _build_export_rows(daily_map: dict[str, tuple[dict, str]]):
-    """일자별 시간대별 wide CSV (T1 출국장 5개 + T2 2개 + 권역 7개 × 2터미널)."""
+    """일자별 시간대별 wide CSV (T1 출국장 5개 + T2 2개 + 권역 7개 × 2터미널 + KPI 카드 일자 합계)."""
     header = (
         ["날짜", "시간대"]
         + [f"T1출국{g}" for g in T1_GATES]
@@ -395,13 +395,17 @@ def _build_export_rows(daily_map: dict[str, tuple[dict, str]]):
         + ["T2출국합계"]
         + [f"T1권역_{r}" for r in REGIONS]
         + [f"T2권역_{r}" for r in REGIONS]
-        + ["출처"]
+        + ["전체출국객수", "T1출국객수", "T2출국객수"]
     )
     yield header
     for ymd in sorted(daily_map.keys()):
-        data, src = daily_map[ymd]
+        data, _src = daily_map[ymd]
         if not data:
             continue
+        # KPI 카드 동일 기준 (예약합계 출국 = 환승객 포함) — 일자별 단일 값, 시간대 행에 반복
+        t1_kpi = _reserved_out(data, "T1")
+        t2_kpi = _reserved_out(data, "T2")
+        total_kpi = t1_kpi + t2_kpi
         # 24시간 매트릭스 빌드
         t1_dep = {row["hour"]: row for row in (data["T1"]["depart"]["시간대별"] or [])}
         t2_dep = {row["hour"]: row for row in (data["T2"]["depart"]["시간대별"] or [])}
@@ -424,7 +428,7 @@ def _build_export_rows(daily_map: dict[str, tuple[dict, str]]):
                 row.append(int(t1r.get(r) or 0))
             for r in REGIONS:
                 row.append(int(t2r.get(r) or 0))
-            row.append(src)
+            row.extend([total_kpi, t1_kpi, t2_kpi])
             yield row
 
 
