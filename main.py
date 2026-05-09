@@ -1,7 +1,14 @@
-"""인천공항 출국장 혼잡도 대시보드 (FastAPI + Jinja2)."""
+"""인천공항 출국장 혼잡도 대시보드 (FastAPI + Jinja2).
+
+데이터 소스: airport.kr 공항 예상 혼잡도 엑셀 (자세한 스키마는
+icn_utils/excel_parser.py 참조). 매일 17:05 + 23:30 KST cron으로 받아
+Daily_Data/passgr_YYYYMMDD.pkl에 통합 dict 저장.
+"""
 from __future__ import annotations
 
+import csv
 import hmac
+import io
 import json
 import logging
 import os
@@ -11,12 +18,11 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-import pandas as pd
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -24,12 +30,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 logger = logging.getLogger("icn_pax_congestion")
 
 from icn_utils.aggregator import (
-    WEEKDAY_KR, daily_totals, fmt_peak_hour, hourly_per_gate, hourly_t1_t2,
-    kpi_summary, mtd_hourly_t1_t2, mtd_per_gate, mtd_summary,
+    ALL_ZONE_KEYS, REGIONS, T1_GATES, T2_GATES, WEEKDAY_KR,
+    daily_totals, fmt_peak_hour, hourly_per_gate, hourly_t1_t2,
+    kpi_summary, mtd_hourly_t1_t2, mtd_per_gate, mtd_reserved, mtd_route,
+    mtd_summary, reserved_summary, route_matrix, route_summary,
 )
-from icn_utils.data_loader import (
-    fetch_live, list_available_dates, load_day, load_range,
-)
+from icn_utils.data_loader import list_available_dates, load_day, load_range
+from icn_utils.exchange_rate import load_rates
 
 load_dotenv()
 
@@ -38,18 +45,18 @@ BASE = Path(__file__).resolve().parent
 DAILY_DIR = BASE / "Daily_Data"
 
 DAILY_TREND_DAYS = 30  # 일자별 차트 표시 일수 (D-29 ~ D+1)
-DATA_START_DATE = date(2026, 5, 1)  # 이 날짜 이전 데이터는 무시 (사전 테스트분 제외)
+DATA_START_DATE = date(2026, 5, 1)  # 엑셀 데이터 첫 일자 (5/1부터 백필)
 
 app = FastAPI(title="인천공항 출국장 혼잡도")
 app.add_middleware(GZipMiddleware, minimum_size=500)
 app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE / "templates"))
 
-# ---------- TTL 캐시 (메모리만; Render 컨테이너 휘발성 + 멀티워커 race 회피) ----------
+# ---------- TTL 캐시 ----------
 _CACHE: dict[str, tuple[float, object]] = {}
 _CACHE_LOCK = threading.Lock()
-_BUILD_LOCK = threading.Lock()  # dogpile 방지 (동시 빌드 1회로 합침)
-_TTL_SECONDS = 60 * 60 * 48  # 48시간 (cron 누락 안전 마진)
+_BUILD_LOCK = threading.Lock()
+_TTL_SECONDS = 60 * 60 * 48
 
 
 def _cache_get(key: str):
@@ -72,7 +79,7 @@ def _cache_clear() -> None:
         _CACHE.clear()
 
 
-# ---------- 간이 IP 레이트 리밋 (export-raw DoS 방어) ----------
+# ---------- IP 레이트 리밋 ----------
 _RATE_BUCKET: dict[str, list[float]] = {}
 _RATE_LOCK = threading.Lock()
 
@@ -88,87 +95,112 @@ def _rate_check(ip: str, max_per_window: int = 5, window_seconds: int = 300) -> 
         return True
 
 
-# ---------- 데이터 빌드 ----------
-def build_payload(service_key: str | None) -> dict:
-    """전체 페이지 페이로드 생성. 캐시 키는 오늘 날짜.
+def _kst_today() -> date:
+    """KST 오늘. ICN_TODAY_OVERRIDE 환경변수(YYYYMMDD)로 시뮬레이션 가능."""
+    override = os.environ.get("ICN_TODAY_OVERRIDE", "").strip()
+    if override:
+        try:
+            return datetime.strptime(override, "%Y%m%d").date()
+        except ValueError:
+            logger.warning("invalid ICN_TODAY_OVERRIDE=%r, using real KST", override)
+    return datetime.now(KST).date()
 
-    dogpile 락으로 동시 빌드를 1회로 합쳐 외부 API 중복 호출과 메모리 폭증 방지.
-    """
-    today = datetime.now(KST).date()
+
+# ---------- 페이로드 빌드 ----------
+def build_payload() -> dict:
+    today = _kst_today()
     cache_key = today.strftime("%Y%m%d")
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached
-
     with _BUILD_LOCK:
-        # 락 획득 후 재확인 — 대기 중에 다른 스레드가 빌드를 끝냈을 수 있음
         cached = _cache_get(cache_key)
         if cached is not None:
             return cached
-        return _build_payload_locked(service_key, today)
+        return _build_payload_locked(today)
 
 
-def _build_payload_locked(service_key: str | None, today: date) -> dict:
+def _build_payload_locked(today: date) -> dict:
     cache_key = today.strftime("%Y%m%d")
     tomorrow = today + timedelta(days=1)
-    future_end = today + timedelta(days=2)  # D+2 — airport.kr 스크래핑이 D+2까지 제공
-    range_start = today - timedelta(days=DAILY_TREND_DAYS - 3)  # D+2까지 포함하기 위해 보정
+    range_start = today - timedelta(days=DAILY_TREND_DAYS - 2)
     if range_start < DATA_START_DATE:
         range_start = DATA_START_DATE
-    daily_map = load_range(str(DAILY_DIR), range_start, future_end)
+    daily_map = load_range(str(DAILY_DIR), range_start, tomorrow)
 
-    # 오늘·내일 데이터: 디스크 우선 → 비어있으면 라이브 API fallback
     today_ymd = today.strftime("%Y%m%d")
     tomorrow_ymd = tomorrow.strftime("%Y%m%d")
 
-    today_df, today_src = daily_map.get(today_ymd, (pd.DataFrame(), "none"))
-    tomorrow_df, tomorrow_src = daily_map.get(tomorrow_ymd, (pd.DataFrame(), "none"))
-
-    if (today_df.empty or tomorrow_df.empty) and service_key:
-        try:
-            live = fetch_live(service_key)
-        except Exception as exc:
-            logger.warning("fetch_live failed, falling back to empty: %r", exc)
-            live = {}
-        if today_df.empty and today_ymd in live:
-            today_df = live[today_ymd]
-            today_src = "live"
-            daily_map[today_ymd] = (today_df, today_src)
-        if tomorrow_df.empty and tomorrow_ymd in live:
-            tomorrow_df = live[tomorrow_ymd]
-            tomorrow_src = "live"
-            daily_map[tomorrow_ymd] = (tomorrow_df, tomorrow_src)
+    today_data, today_src = daily_map.get(today_ymd, (None, "none"))
+    tomorrow_data, tomorrow_src = daily_map.get(tomorrow_ymd, (None, "none"))
 
     # KPI
-    kpi = kpi_summary(today_df, tomorrow_df)
+    kpi = kpi_summary(today_data, tomorrow_data)
 
-    # MTD 평균 (이번달 1일 ~ 어제, d0 실측)
+    # 핵심 요약 (SMS 동일 기준 — 예약합계 출국)
+    reserved = reserved_summary(today_data, tomorrow_data)
+    reserved_mtd = mtd_reserved(daily_map, today)
+
+    def _delta_pct(focus_v: int, mtd_v: int):
+        if not focus_v or not mtd_v or mtd_v <= 0:
+            return None
+        return round((focus_v - mtd_v) / mtd_v * 100, 1)
+
+    reserved_delta = {
+        "today": {
+            "T1": _delta_pct(reserved["today"]["T1"], reserved_mtd["T1"]),
+            "T2": _delta_pct(reserved["today"]["T2"], reserved_mtd["T2"]),
+            "total": _delta_pct(reserved["today"]["total"], reserved_mtd["total"]),
+        },
+        "tomorrow": {
+            "T1": _delta_pct(reserved["tomorrow"]["T1"], reserved_mtd["T1"]),
+            "T2": _delta_pct(reserved["tomorrow"]["T2"], reserved_mtd["T2"]),
+            "total": _delta_pct(reserved["tomorrow"]["total"], reserved_mtd["total"]),
+        },
+    }
+
+    # 면세점 고시환율 (USD/KRW) — 서울외국환중개 전일 고시 (모든 면세점 공통)
+    rates = load_rates(DAILY_DIR)
+    exchange = {
+        "today": rates.get(today_ymd),
+        "tomorrow": rates.get(tomorrow_ymd),
+        "available": len(rates),
+    }
+
+    # MTD
     mtd = mtd_summary(daily_map, today)
     gate_mtd = mtd_per_gate(daily_map, today)
     delta_pct_T1 = None
     delta_pct_T2 = None
     if mtd["T1"] > 0 and kpi["tomorrow"]["T1"] > 0:
-        delta_pct_T1 = round(
-            (kpi["tomorrow"]["T1"] - mtd["T1"]) / mtd["T1"] * 100, 1
-        )
+        delta_pct_T1 = round((kpi["tomorrow"]["T1"] - mtd["T1"]) / mtd["T1"] * 100, 1)
     if mtd["T2"] > 0 and kpi["tomorrow"]["T2"] > 0:
-        delta_pct_T2 = round(
-            (kpi["tomorrow"]["T2"] - mtd["T2"]) / mtd["T2"] * 100, 1
-        )
+        delta_pct_T2 = round((kpi["tomorrow"]["T2"] - mtd["T2"]) / mtd["T2"] * 100, 1)
 
-    # 시간대별 차트 (T1/T2 별 패널, 내일 vs MTD 평균)
-    today_hourly = hourly_t1_t2(today_df)
-    tomorrow_hourly = hourly_t1_t2(tomorrow_df)
+    # 시간대별 차트
+    today_hourly = hourly_t1_t2(today_data)
+    tomorrow_hourly = hourly_t1_t2(tomorrow_data)
     mtd_hourly = mtd_hourly_t1_t2(daily_map, today)
 
-    # 출국장별 시간대 분포 (오늘 기준)
-    today_per_gate = hourly_per_gate(today_df)
-    tomorrow_per_gate = hourly_per_gate(tomorrow_df)
+    # 출국장별 시간대 (7개 zone)
+    today_per_gate = hourly_per_gate(today_data)
+    tomorrow_per_gate = hourly_per_gate(tomorrow_data)
 
-    # 일자별 추이 (D-29 ~ D+1)
+    # 노선별
+    today_route_T1 = route_matrix(today_data, "T1")
+    today_route_T2 = route_matrix(today_data, "T2")
+    tomorrow_route_T1 = route_matrix(tomorrow_data, "T1")
+    tomorrow_route_T2 = route_matrix(tomorrow_data, "T2")
+    today_route_summary_T1 = route_summary(today_data, "T1")
+    today_route_summary_T2 = route_summary(today_data, "T2")
+    tomorrow_route_summary_T1 = route_summary(tomorrow_data, "T1")
+    tomorrow_route_summary_T2 = route_summary(tomorrow_data, "T2")
+    mtd_route_T1 = mtd_route(daily_map, today, "T1")
+    mtd_route_T2 = mtd_route(daily_map, today, "T2")
+
+    # 일자별 추이
     daily_df = daily_totals(daily_map)
 
-    # 표용: 일자별 전체 + 요일·미래 표시
     table_rows = []
     for _, row in daily_df.iterrows():
         ymd = row["YYYYMMDD"]
@@ -200,7 +232,6 @@ def _build_payload_locked(service_key: str | None, today: date) -> dict:
 
     fetched_at = datetime.now(KST)
 
-    # 활용 데이터 기간 (M/D ~ M/D) — 실제 pkl 있는 날짜 기준
     avail = [d for d in list_available_dates(str(DAILY_DIR))
              if d >= DATA_START_DATE.strftime("%Y%m%d")]
     if avail:
@@ -212,7 +243,17 @@ def _build_payload_locked(service_key: str | None, today: date) -> dict:
             data_period = "—"
     else:
         data_period = "—"
+
     payload = {
+        # SMS 알림 동일 기준 핵심 요약 (예약합계 출국 = 환승객 포함)
+        "reserved": {
+            "today": reserved["today"],
+            "tomorrow": reserved["tomorrow"],
+            "mtd": reserved_mtd,
+            "delta": reserved_delta,
+        },
+        # 면세점 고시환율 (USD/KRW)
+        "exchange": exchange,
         "today": {
             "date": today.strftime("%Y-%m-%d"),
             "weekday": WEEKDAY_KR[today.weekday()],
@@ -238,6 +279,18 @@ def _build_payload_locked(service_key: str | None, today: date) -> dict:
         "mtd_hourly": mtd_hourly,
         "today_per_gate": today_per_gate,
         "tomorrow_per_gate": tomorrow_per_gate,
+        # 노선별 (신규)
+        "today_route_T1": today_route_T1,
+        "today_route_T2": today_route_T2,
+        "tomorrow_route_T1": tomorrow_route_T1,
+        "tomorrow_route_T2": tomorrow_route_T2,
+        "today_route_summary_T1": today_route_summary_T1,
+        "today_route_summary_T2": today_route_summary_T2,
+        "tomorrow_route_summary_T1": tomorrow_route_summary_T1,
+        "tomorrow_route_summary_T2": tomorrow_route_summary_T2,
+        "mtd_route_T1": mtd_route_T1,
+        "mtd_route_T2": mtd_route_T2,
+        # 표·메타
         "table_rows": table_rows,
         "fetched_at": fetched_at.strftime("%Y-%m-%d %H:%M"),
         "data_period": data_period,
@@ -250,9 +303,8 @@ def _build_payload_locked(service_key: str | None, today: date) -> dict:
 @app.on_event("startup")
 def warm_cache_on_startup() -> None:
     _cache_clear()
-    service_key = os.environ.get("INCHEON_API_KEY", "")
     try:
-        build_payload(service_key)
+        build_payload()
         logger.info("startup cache warmed")
     except Exception as exc:
         logger.warning("startup cache warm skipped: %r", exc)
@@ -261,10 +313,9 @@ def warm_cache_on_startup() -> None:
 # ---------- 라우트 ----------
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    service_key = os.environ.get("INCHEON_API_KEY", "")
-    payload = await run_in_threadpool(build_payload, service_key)
+    payload = await run_in_threadpool(build_payload)
 
-    today = datetime.now(KST).date()
+    today = _kst_today()
     tomorrow = today + timedelta(days=1)
     avail = [d for d in list_available_dates(str(DAILY_DIR))
              if d >= DATA_START_DATE.strftime("%Y%m%d")]
@@ -306,20 +357,17 @@ async def refresh_cache(x_refresh_token: str | None = Header(None)):
         raise HTTPException(503, "refresh disabled (REFRESH_TOKEN not set)")
     if not x_refresh_token or not hmac.compare_digest(x_refresh_token, expected):
         raise HTTPException(401, "invalid token")
-    service_key = os.environ.get("INCHEON_API_KEY", "")
-    if not service_key:
-        raise HTTPException(500, "INCHEON_API_KEY not set")
     _cache_clear()
     try:
-        payload = await run_in_threadpool(build_payload, service_key)
+        payload = await run_in_threadpool(build_payload)
     except Exception as exc:
         logger.error("refresh build failed: %r", exc)
         raise HTTPException(502, f"build failed: {exc!r}")
-    logger.info("refresh ok: today=%s tomorrow=%s",
-                payload["today"]["kpi"]["T1"] + payload["today"]["kpi"]["T2"],
-                payload["tomorrow"]["kpi"]["T1"] + payload["tomorrow"]["kpi"]["T2"])
     today_kpi = payload["today"]["kpi"]
     tomorrow_kpi = payload["tomorrow"]["kpi"]
+    logger.info("refresh ok: today=%s tomorrow=%s",
+                today_kpi["T1"] + today_kpi["T2"],
+                tomorrow_kpi["T1"] + tomorrow_kpi["T2"])
     return {
         "ok": True,
         "fetched_at": payload["fetched_at"],
@@ -331,6 +379,50 @@ async def refresh_cache(x_refresh_token: str | None = Header(None)):
 @app.get("/healthz")
 async def healthz():
     return {"ok": True, "time": datetime.now(KST).isoformat()}
+
+
+# ---------- raw CSV export ----------
+def _build_export_rows(daily_map: dict[str, tuple[dict, str]]):
+    """일자별 시간대별 wide CSV (T1 출국장 5개 + T2 2개 + 권역 7개 × 2터미널)."""
+    header = (
+        ["날짜", "시간대"]
+        + [f"T1출국{g}" for g in T1_GATES]
+        + ["T1출국합계"]
+        + [f"T2출국{g}" for g in T2_GATES]
+        + ["T2출국합계"]
+        + [f"T1권역_{r}" for r in REGIONS]
+        + [f"T2권역_{r}" for r in REGIONS]
+        + ["출처"]
+    )
+    yield header
+    for ymd in sorted(daily_map.keys()):
+        data, src = daily_map[ymd]
+        if not data:
+            continue
+        # 24시간 매트릭스 빌드
+        t1_dep = {row["hour"]: row for row in (data["T1"]["depart"]["시간대별"] or [])}
+        t2_dep = {row["hour"]: row for row in (data["T2"]["depart"]["시간대별"] or [])}
+        t1_rt = {row["hour"]: row for row in (data["T1"]["depart_route"]["시간대별"] or [])}
+        t2_rt = {row["hour"]: row for row in (data["T2"]["depart_route"]["시간대별"] or [])}
+        for h in range(24):
+            hour_key = f"{h:02d}_{(h+1)%24:02d}"
+            t1d = t1_dep.get(hour_key, {})
+            t2d = t2_dep.get(hour_key, {})
+            t1r = t1_rt.get(hour_key, {})
+            t2r = t2_rt.get(hour_key, {})
+            row = [ymd, hour_key]
+            for g in T1_GATES:
+                row.append(int(t1d.get(g) or 0))
+            row.append(int(t1d.get("total") or 0))
+            for g in T2_GATES:
+                row.append(int(t2d.get(g) or 0))
+            row.append(int(t2d.get("total") or 0))
+            for r in REGIONS:
+                row.append(int(t1r.get(r) or 0))
+            for r in REGIONS:
+                row.append(int(t2r.get(r) or 0))
+            row.append(src)
+            yield row
 
 
 @app.get("/api/export-raw")
@@ -356,40 +448,19 @@ async def export_raw(request: Request, start: str, end: str):
         raise HTTPException(400, "최대 90일 범위까지 내보낼 수 있습니다.")
 
     daily_map = load_range(str(DAILY_DIR), start_dt, end_dt)
-    if not any((df is not None and not df.empty) for df, _ in daily_map.values()):
+    if not any(data is not None for data, _ in daily_map.values()):
         raise HTTPException(404, "해당 기간의 데이터가 없습니다.")
 
-    rename_map = {
-        "adate": "날짜",
-        "atime": "시간대",
-        "t1dg1": "T1출국1", "t1dg2": "T1출국2",
-        "t1dg3": "T1출국3", "t1dg4": "T1출국4",
-        "t1dg5": "T1출국5", "t1dg6": "T1출국6(교통약자)",
-        "t1dgsum1": "T1출국합계",
-        "t2dg1": "T2출국1", "t2dg2": "T2출국2",
-        "t2dgsum2": "T2출국합계",
-        "source": "출처",
-    }
-    drop_cols = [
-        "tmp1", "tmp2",
-        "t1eg1", "t1eg2", "t1eg3", "t1eg4", "t1egsum1",
-        "t2eg1", "t2eg2", "t2egsum1",
-    ]
-
     def csv_chunks():
-        # 일자별 chunk 단위 yield → 메모리에 전체 concat 적재 회피 (OOM 방어)
         yield "﻿"  # UTF-8 BOM (Excel 한글 호환)
-        first = True
-        for ymd in sorted(daily_map.keys()):
-            df, src = daily_map[ymd]
-            if df is None or df.empty:
-                continue
-            d = df.copy()
-            d["source"] = src
-            d = d.drop(columns=drop_cols, errors="ignore")
-            d = d.rename(columns=rename_map)
-            yield d.to_csv(index=False, header=first, encoding="utf-8")
-            first = False
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        for row in _build_export_rows(daily_map):
+            writer.writerow(row)
+            text = buf.getvalue()
+            buf.seek(0)
+            buf.truncate()
+            yield text
 
     fname = f"icn_pax_congestion_{start_dt.strftime('%Y%m%d')}_{end_dt.strftime('%Y%m%d')}.csv"
     return StreamingResponse(

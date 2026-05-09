@@ -1,21 +1,22 @@
-# ICN Pax Congestion — 인천공항 출국장 혼잡도
+# ICN Pax Congestion — 인천공항 출국장별 예상 승객수
 
-인천국제공항공사 OpenAPI(`getPassgrAnncmt`)로 D-0(오늘) ~ D+1(내일) 시간대별 출국장 예상 이용객수를 조회·시각화하는 대시보드 (FastAPI + Plotly.js → Render).
+airport.kr 공식 통계 페이지의 '엑셀 다운로드' 엔드포인트로 D-0(오늘) ~ D+1(내일) 출국·입국·환승·노선·셔틀트레인 정보를 매일 받아 시각화하는 대시보드 (FastAPI + Plotly.js → Render).
 
 ## 구성
 
 | 파일 | 역할 |
 |------|------|
-| `main.py` | FastAPI 앱 — `/`, `/api/refresh` (POST, X-Refresh-Token), `/healthz`, `/api/export-raw`. 메모리+/tmp 디스크 48시간 캐시 |
-| `templates/index.html` | Jinja2 템플릿 — 비번 게이트 + Plotly 차트 4종(시간대별 T1·T2, 출국장별 stacked, 일자별 추이) + 일자별 표 |
-| `icn_utils/data_loader.py` | API 호출 + Daily_Data/ pkl 로드 + D+1 빈 응답 강건 처리 |
-| `icn_utils/aggregator.py` | 시간대별·일자별·출국장별 집계 + KPI 계산 |
-| `backfill.py` | cron용 일별 수집 스크립트 — D-0/D+1 둘 다 호출 |
-| `Daily_Data/` | 일별 원본 pkl (`passgr_YYYYMMDD_d{0,1}.pkl`), 매일 누적 |
+| `main.py` | FastAPI 앱 — `/`, `/api/refresh` (POST, X-Refresh-Token), `/healthz`, `/api/export-raw`. 메모리 48시간 캐시 + dogpile 락 |
+| `templates/index.html` | Jinja2 템플릿 — 비번 게이트 + 시간대별 라인 2개 + 출국장 평면도 SVG 2개 + 노선별 종합 바 2개 + 노선별 시간대 stacked bar 2개 + 일자별 표 |
+| `icn_utils/excel_parser.py` | airport.kr 엑셀 9개 시트 파서 (시트별 함수 + `parse_terminal` 통합) |
+| `icn_utils/data_loader.py` | `load_day(daily_dir, ymd)` → 통합 dict 반환. 단일 pkl 로드 |
+| `icn_utils/aggregator.py` | KPI·MTD·시간대·gate별·노선별(`route_matrix`/`route_summary`/`mtd_route`) 집계 |
+| `backfill_excel.py` | airport.kr xls 다운(인증 없음, GET 1회) → 9개 시트 파싱 → 통합 dict pkl 저장 |
+| `Daily_Data/` | 일자별 통합 pkl `passgr_YYYYMMDD.pkl` (T1+T2 9개 시트 통합) |
+| `Daily_Data/_archive_openapi/` | 구 OpenAPI 시절 pkl 보관 (사용 중지) |
 | `render.yaml` | Render 배포 설정 (python runtime, uvicorn) |
-| `requirements.txt` | fastapi, uvicorn, jinja2, pandas, requests 등 |
-| `.env` | `INCHEON_API_KEY`, `REFRESH_TOKEN` (gitignore) |
-| `인천공항API_출국장혼잡도.ipynb` | 원본 노트북 (참고용) |
+| `requirements.txt` | fastapi, uvicorn, jinja2, pandas, requests, **xlrd**, holidays |
+| `.env` | `REFRESH_TOKEN` (gitignore) |
 
 ## 접근 제어
 - 비번 `0708`, sessionStorage 키 `pax_congestion_auth_ok` (다른 신라 사이트와 분리)
@@ -24,88 +25,92 @@
 
 ## 데이터 수급 흐름
 
-- **API 한계**: D-0(오늘 부분실측+예측) / D+1(내일 예측) 만 반환. 과거 데이터 미제공 → **반드시 매일 누적 수집 필요**
-- **OpenAPI 갱신**: 매일 17:00 KST 발표 (공식). D+1 예측이 그 시점에 다음날 데이터로 갱신됨.
+- **다운로드 URL**: `https://www.airport.kr/pni/ap_ko/statisticPredictCrowdedOfInoutExcel.do?selTm={T1|T2}&pday=YYYYMMDD`
+  - 인증·세션 불필요. GET 1회로 ~329KB .xls 응답 (Composite Document V2)
+  - 매일 **17:00 KST** 갱신 (D+1까지 출입국·환승·노선·셔틀, D+2까지 출국 한정)
 - **수집 정책 (매일 17:05 KST + 23:30 KST 2회)**:
-  - `Daily_Data/passgr_YYYYMMDD_d0.pkl` — 그날 D-0 호출분 (덮어쓰기 — 23:30 cron 결과가 최종값으로 채택)
-  - `Daily_Data/passgr_YYYYMMDD_d1.pkl` — 다음날 D+1 예측분 (백업·검증용 — 17:05 cron이 발표 직후 신선도 확보)
-- **조회 우선순위**: 같은 날짜에 d0가 있으면 d0, 없으면 d1, 둘 다 없고 오늘·내일이면 라이브 API fallback
-- **캐싱**: 메모리 + 디스크 pickle 이중 캐시 (`/tmp/icn_pax_congestion_cache.pkl`). TTL 48시간(cron 누락 안전 마진). 키 = 오늘 날짜
-- **캐시 갱신**: 17:10 KST + 23:35 KST에 GitHub Actions cron이 `/api/refresh` 호출 (각 backfill 5분 후)
+  - `Daily_Data/passgr_YYYYMMDD.pkl` — 그날 D-0 + 다음날 D+1 (덮어쓰기 — 23:30 cron이 최종값)
+- **캐싱**: 메모리 dict (TTL 48시간, dogpile 락). 단일 워커 가정.
+- **캐시 갱신**: 17:10 KST + 23:35 KST에 GitHub Actions cron이 `/api/refresh` 호출
 
-## API 응답 구조
+## 엑셀 시트 9개
 
-한 번의 호출로 **입국장(eg) + 출국장(dg)** 시간대별 객수가 모두 반환됨. 25행(시간대 24 + 합계 1).
-
-| 컬럼 | 의미 |
+| 시트 | 추출 데이터 |
 |---|---|
-| `adate` / `atime` | 날짜(YYYYMMDD) / 시간대(`00_01` ~ `23_24`) |
-| `t1eg1~4` / `t1egsum1` | T1 입국장 1~4 / 합계 |
-| `t1dg1~6` / `t1dgsum1` | T1 출국장 D1~D6 / 합계 |
-| `t2eg1~2` / `t2egsum1` | T2 입국장 / 합계 |
-| `t2dg1~2` / `t2dgsum2` | T2 출국장 D1·D2 / 합계 |
+| 출국승객예고 | 예약합계(출국/입국) + 출국장별 합계 + 동/서 비율 + **시간대 × 출국장** 매트릭스 |
+| 입국승객예고 | 시간대 × 입국심사대 매트릭스 (T1: AB/C/D/EF, T2: A/B) |
+| 환승객예고 | 대한항공·아시아나 비율 + 보안검색대별 환승객 |
+| 출국노선별승객예고 | **권역(7개) 합계 + 시간대 × 권역 매트릭스** ★ 마케팅 핵심 |
+| 입국노선별승객예고 | 권역별 입국 (raw 보관, 화면 미사용) |
+| 출국·입국 셔틀트레인 | T1↔탑승동 셔틀 시간대별 객수 (raw 보관) |
+| basedata | 모든 데이터 raw 백업 (현재 미사용) |
 
-화면에서는 출국장(dg)만 사용. 입국장(eg) 데이터는 raw에 함께 저장만 하고 향후 확장 여지로 보존.
+**권역 7개**: 일본 / 중국 / 동남아 / 미주 / 유럽 / 오세아니아 / 기타
+
+## 통합 dict 스키마 (`Daily_Data/passgr_YYYYMMDD.pkl`)
+
+```python
+{
+  "date": "20260509",
+  "fetched_at": "2026-05-09 23:30 KST",
+  "T1": {
+    "depart": {"예약합계": {...}, "출국장별": {"1","2","3","4","5_6"}, "동서비율": {...}, "시간대별": [24개 dict]},
+    "arrive": {"심사대별": {"AB","C","D","EF"}, "시간대별": [24개]},
+    "transit": {"KE", "OZ", "계", "비율_KE", "보안검색대별"},
+    "depart_route": {"권역합계": {7권역}, "시간대별": [24개]},
+    "arrive_route": {... 동일},
+    "shuttle_depart": [24개 dict],
+    "shuttle_arrive": [24개 dict]
+  },
+  "T2": {... 동일 (출국장 1·2 / 입국심사대 A·B)}
+}
+```
 
 ## 시각화
 
-1. **KPI 카드 2개**: 오늘 / 내일 — 총객수, T1·T2 분리, 피크 시간대·객수
-2. **시간대별 차트** (T1·T2 분리 2 패널)
-   - 실선 = 오늘 (D-0) / 점선 = 내일 (D+1)
-3. **출국장별 시간대 분포** (오늘 기준 stacked bar)
-   - T1 D1~D6 (파랑 계열) + T2 D1·D2 (주황 계열)
-4. **일자별 추이** (D-29 ~ D+1, 30일)
-   - T1·T2 + 합계(점선) · 미래일 노란 배경
-5. **일자별 표**
-   - 날짜·요일·T1·T2·합계·피크 시간대·피크 객수·출처(실측/예측/실시간/없음)
-   - 오늘 = 파랑 하이라이트 / 미래 = 노란 배경 / 주말 = 빨강
+1. **KPI 카드 2개**: 오늘 / 내일 — 총객수, T1·T2, 피크 시간대·객수
+2. **시간대별 차트** (T1·T2 분리): 내일 예상(실선) + MTD 평균(점선)
+3. **출국장 평면도 SVG 2개** (T1: 6개 zone — 5·6번은 동일 데이터 합산 표시, T2: 2개 zone)
+4. **노선별 종합 바 2개** (T1·T2): 7권역 그룹바 (내일 예상 vs MTD 평균)
+5. **노선별 시간대 stacked bar 2개** (T1·T2): 24시간 × 7권역 누적 분포
+6. **일자별 표**: 날짜·요일·T1·T2·피크 시간/객수, 오늘=파랑/미래=노랑/주말=빨강
 
 ## 로컬 실행
 
 ```bash
 cd 출국장이용객수조회
 pip install -r requirements.txt
-INCHEON_API_KEY="..." uvicorn main:app --reload --port 8000
+python3 backfill_excel.py 20260509  # 임의 일자 수집
+uvicorn main:app --reload --port 8000
 ```
-
-`.env`에 `INCHEON_API_KEY` 필요. Daily_Data가 비어있으면 라이브 API로 fallback 가능.
 
 ## 배포
 
 - **Repo**: `jongho1972/icn-pax-congestion` (별도 git 저장소, private)
 - **Render URL**: <https://jhawk-pax-congestion.onrender.com>
-- **Env (Render Dashboard)**: `INCHEON_API_KEY`, `REFRESH_TOKEN`
+- **Env (Render Dashboard)**: `REFRESH_TOKEN` (1개)
 
 ## 자동화
 
-- **GitHub Actions** `.github/workflows/daily-backfill.yml` (Daily_Data 수집)
+- **GitHub Actions** `.github/workflows/daily-backfill.yml`
   - 스케줄: **17:05 KST + 23:30 KST** (하루 2회)
-    - **17:05 KST** = 08:05 UTC : 인천공항 OpenAPI 발표(17:00 KST) 직후 D+1 신선도 확보
-    - **23:30 KST** = 14:30 UTC : 그날 D-0 마감값 + 다음날 D+1 백업 (덮어쓰기)
-  - 동작: `actions/checkout` → `pip install pandas requests` → `python3 backfill.py` → `git add Daily_Data/` → 변경 있으면 commit `data: backfill YYYYMMDD-HHMMKST` 후 `git push origin main`
-  - GitHub Secret 필요: `INCHEON_API_KEY`
-- **GitHub Actions** `.github/workflows/refresh-cache.yml` (Render 메모리·디스크 캐시 무효화)
-  - 스케줄: **17:10 KST + 23:35 KST** (backfill 5분 후, push 반영 후)
-  - 동작: `POST /api/refresh` (헤더 `X-Refresh-Token: ${{ secrets.REFRESH_TOKEN }}`)
-  - GitHub Secret 필요: `REFRESH_TOKEN`
-- **GitHub Actions** `.github/workflows/keep-alive.yml` (Render 슬립 방지 + 페이로드 캐시 워밍)
-  - 스케줄: 10분마다 `GET /` 호출 (`--max-time 300` — 콜드 빌드 1~3분 흡수). 메인 페이지 페이로드 캐시까지 워밍해 컨테이너 재시작 후 첫 사용자가 빌드 비용 떠안는 일 방지
-- **GitHub Actions** `.github/workflows/daily-mailer.yml` (일일 메일 발송)
-  - 스케줄: **17:30 KST** = 08:30 UTC (출발 항공편 메일러와 동일 시간대, GH Actions 큐 지연 흡수)
-  - 동작: Playwright(headless chromium)로 Render 사이트 접속 → 비번 입력 → `body.capturing` + 1.5배 zoom → `.container` PNG 캡처 → `send_daily_email.py`가 SMTP(Gmail)로 발송
-  - 수신자: `mailing_list.txt` 우선 (현재 jongho0708.lee@samsung.com 1명, 검증 후 확장 예정), 없으면 `MAIL_RECIPIENTS` 환경변수 fallback
-  - GitHub Secret 필요: `DASHBOARD_PASSWORD`, `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `MAIL_RECIPIENTS` (선택)
-  - workflow_dispatch 입력 `test_recipient` 제공 시 메일링 리스트 무시하고 그 1명에게만 발송
-  - 실패 시(`if: failure()`) `jongho1972@gmail.com`로 자동 통지 (Gmail SMTP)
-  - SMTP 진단 로깅: `send_daily_email.py`가 `set_debuglevel(1)`로 SMTP 응답·refused 수신자·post-send NOOP을 stdout에 출력 (Sent 폴더 누락 원인 추적용)
+  - 동작: `actions/checkout` → `pip install pandas requests xlrd` → `python3 backfill_excel.py` → `git add Daily_Data/` → 변경 있으면 commit `data: backfill YYYYMMDD-HHMMKST` 후 push. 23:30 KST run에서만 Render Deploy Hook 호출.
+- **GitHub Actions** `.github/workflows/refresh-cache.yml`
+  - 스케줄: **17:10 KST + 23:35 KST** (backfill 5분 후)
+  - `POST /api/refresh` (헤더 `X-Refresh-Token`)
+- **GitHub Actions** `.github/workflows/keep-alive.yml` — 10분마다 GET / (콜드 슬립 방지)
+- **GitHub Actions** `.github/workflows/daily-mailer.yml`
+  - 스케줄: **17:30 KST**
+  - Playwright headless chromium → 비번 입력 → `body.capturing` + 1.5배 zoom → `.container` PNG 캡처 → SMTP 발송
+  - 수신자: `mailing_list.txt` 우선, 없으면 `MAIL_RECIPIENTS` 환경변수 폴백
+  - 실패 시 `jongho1972@gmail.com` 자동 통지
 
 ## 신라 사이트 연동
 
-- 신라면세점 루트 랜딩(`shilla-icn-mkt.netlify.app`) **5번째 카드**로 노출
-- 카드 제목: "출국장 혼잡도 자료" / 외부 Render URL 새 탭
+- 신라면세점 루트 랜딩(`shilla-icn-mkt.netlify.app`) 5번째 카드: "인천공항 출국장별 예상 승객수" / 외부 Render URL 새 탭
 
 ## 참고
 
-- 인천공항 OpenAPI: <https://www.data.go.kr/data/15095066/openapi.do>
-- D-0/D+1만 반환. 과거 데이터는 누적 pkl로만 보관
-- D+1 예측은 인천공항 측 데이터 생성 시점에 따라 비어있을 수 있음 — `data_loader._fetch_api`에서 빈 응답 시 빈 DF 반환, `build_payload`에서 KPI 0 처리
+- airport.kr 통계 페이지: <https://www.airport.kr/ap_ko/883/subview.do>
+- 엑셀에 D+2 출국 데이터까지 포함되지만 본 PoC는 D+1까지만 사용
+- D+1 데이터가 17:00 KST 발표 전에는 비어있을 수 있음 — 화면에서 0으로 표시

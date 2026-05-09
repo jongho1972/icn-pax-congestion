@@ -9,7 +9,5 @@ services:
       ignoredPaths:
         - Daily_Data/**
     envVars:
-      - key: INCHEON_API_KEY
-        sync: false
       - key: REFRESH_TOKEN
         sync: false

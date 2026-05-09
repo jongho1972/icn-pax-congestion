@@ -247,6 +247,107 @@
       font-variant-numeric: tabular-nums;
     }
 
+    /* ===== 핵심 요약 (SMS 동일 기준 — 예약합계 출국, 환승객 포함) ===== */
+    .summary-hero {
+      position: relative;
+      background: #FFFFFF;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--crimson);
+      border-radius: 12px;
+      padding: 22px 26px 20px;
+      margin: 0 0 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .summary-hero-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .summary-hero-date {
+      font-size: 20px; font-weight: 800; color: var(--text);
+      letter-spacing: -0.3px;
+      font-variant-numeric: tabular-nums;
+    }
+    .summary-hero-tag {
+      font-size: 11.5px; font-weight: 700;
+      padding: 3px 10px; border-radius: 999px;
+      background: var(--crimson); color: #fff;
+      letter-spacing: 0.4px;
+    }
+    .summary-hero-rows {
+      display: grid; gap: 10px;
+    }
+    .summary-row {
+      display: grid; grid-template-columns: 110px 1fr auto;
+      align-items: baseline; gap: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+    .summary-row .lbl {
+      font-size: 13px; font-weight: 600; color: var(--text-mid);
+      letter-spacing: -0.2px;
+    }
+    .summary-row .val {
+      font-size: 28px; font-weight: 800; color: var(--text);
+      letter-spacing: -0.5px;
+    }
+    .summary-row .val .unit {
+      font-size: 14px; font-weight: 600; margin-left: 3px;
+      color: var(--text-light);
+    }
+    .summary-row.total .val { font-size: 36px; color: var(--crimson); }
+    .summary-row .mtd {
+      font-size: 12px; color: var(--text-light);
+      white-space: nowrap;
+    }
+    .summary-row .mtd b {
+      color: var(--text-mid); font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .summary-row .rate {
+      display: inline-flex; align-items: baseline; gap: 4px;
+      padding: 4px 10px; border-radius: 6px;
+      background: rgba(184,146,42,0.10);
+      border: 1px solid rgba(184,146,42,0.32);
+      font-size: 13px; font-weight: 600;
+      color: var(--gold);
+      letter-spacing: -0.2px; white-space: nowrap;
+    }
+    .summary-row .rate b { font-size: 14px; color: var(--gold); }
+    .summary-row .delta {
+      display: inline-flex; align-items: baseline; gap: 3px;
+      margin-left: 10px;
+      font-size: 14px; font-weight: 700;
+      letter-spacing: -0.2px;
+      font-variant-numeric: tabular-nums;
+      vertical-align: baseline;
+    }
+    .summary-row.total .delta { font-size: 16px; }
+    .summary-row .delta.pos { color: #B42318; }
+    .summary-row .delta.neg { color: #2A52BE; }
+    .summary-row .delta.flat { color: var(--text-light); }
+    .summary-row .delta .arrow { font-size: 0.85em; line-height: 1; }
+    .summary-hero-foot {
+      margin-top: 12px; padding-top: 10px;
+      border-top: 1px solid var(--border);
+      font-size: 11.5px; color: var(--text-light);
+      letter-spacing: -0.1px;
+    }
+    .summary-hero-empty {
+      text-align: center; padding: 14px 0;
+      font-size: 14px; color: var(--text-mid);
+    }
+    @media (max-width: 640px) {
+      .summary-hero { padding: 18px 18px 16px; }
+      .summary-hero-date { font-size: 17px; }
+      .summary-row { grid-template-columns: 90px 1fr; }
+      .summary-row .mtd { grid-column: 2 / -1; padding-left: 0; }
+      .summary-row .val { font-size: 24px; }
+      .summary-row.total .val { font-size: 30px; }
+    }
+
     /* KPI — 섹션 타이틀 + T1·T2 각각 */
     .kpi-section-title {
       display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
@@ -590,62 +691,65 @@
     </div>
   </div>
 
-  <!-- KPI : T1 D+1 + T2 D+1 (각각 MTD 평균 baseline 포함) -->
-  <h2 class="kpi-section-title">
-    <span class="kpi-section-date">{{ p.tomorrow.date }} ({{ p.tomorrow.weekday }})</span>
-    <span class="kpi-section-label">내일 예상</span>
-  </h2>
-  <div class="kpi-grid">
-    <!-- T1 내일 예상 -->
-    <div class="kpi-card kpi-hero kpi-t1">
-      <span class="kpi-term">T1</span>
-      {% if p.tomorrow.kpi.T1 > 0 %}
-        <div class="kpi-main-row">
-          <div class="kpi-main">{{ "{:,}".format(p.tomorrow.kpi.T1) }}<span class="unit">명</span></div>
-          {% if p.delta_pct_T1 is not none %}
-            {% set dcls = 'pos' if p.delta_pct_T1 > 0 else ('neg' if p.delta_pct_T1 < 0 else 'flat') %}
-            {% set darr = '▲' if p.delta_pct_T1 > 0 else ('▼' if p.delta_pct_T1 < 0 else '―') %}
-            <div class="kpi-delta {{ dcls }}" title="이번 달 일평균 {{ '{:,}'.format(p.mtd.T1) }}명 대비">
-              <span class="kpi-delta-base">MTD 대비</span>
-              {{ darr }} {{ '{:+.1f}'.format(p.delta_pct_T1) }}%
-            </div>
-          {% endif %}
-        </div>
-        <div class="kpi-baseline">
-          <span><span class="lbl">MTD</span><b>{{ "{:,}".format(p.mtd.T1) if p.mtd.T1 > 0 else '—' }}</b>명/일</span>
-        </div>
-      {% else %}
-        <div class="kpi-empty">D+1 예측 미생성 — 보통 23:30 KST 갱신</div>
-      {% endif %}
+  {# 핵심 요약 — 내일 데이터가 있으면 내일, 없으면 오늘을 보여준다 (SMS 알림과 동일 기준) #}
+  {% set has_tomorrow = p.reserved.tomorrow.total > 0 %}
+  {% set focus = p.reserved.tomorrow if has_tomorrow else p.reserved.today %}
+  {% set focus_meta = p.tomorrow if has_tomorrow else p.today %}
+  {% set focus_tag = '내일 예상' if has_tomorrow else '오늘 예상' %}
+  {% set focus_rate = p.exchange.tomorrow if has_tomorrow else p.exchange.today %}
+  {% set focus_delta = p.reserved.delta.tomorrow if has_tomorrow else p.reserved.delta.today %}
+  {% macro delta_chip(pct, anchor) -%}
+    {%- if pct is not none -%}
+      {%- set dcls = 'pos' if pct > 0.05 else ('neg' if pct < -0.05 else 'flat') -%}
+      {%- set darr = '▲' if pct > 0.05 else ('▼' if pct < -0.05 else '―') -%}
+      <span class="delta {{ dcls }}" title="{{ anchor }} MTD 평균 대비"><span class="arrow">{{ darr }}</span> {{ '{:.1f}'.format(pct|abs) }}%</span>
+    {%- endif -%}
+  {%- endmacro %}
+  <div class="summary-hero" role="region" aria-label="핵심 요약">
+    <div class="summary-hero-head">
+      <div class="summary-hero-date">{{ focus_meta.date }} ({{ focus_meta.weekday }})</div>
+      <div class="summary-hero-tag">{{ focus_tag }}</div>
     </div>
-
-    <!-- T2 내일 예상 -->
-    <div class="kpi-card kpi-hero kpi-t2">
-      <span class="kpi-term">T2</span>
-      {% if p.tomorrow.kpi.T2 > 0 %}
-        <div class="kpi-main-row">
-          <div class="kpi-main">{{ "{:,}".format(p.tomorrow.kpi.T2) }}<span class="unit">명</span></div>
-          {% if p.delta_pct_T2 is not none %}
-            {% set dcls = 'pos' if p.delta_pct_T2 > 0 else ('neg' if p.delta_pct_T2 < 0 else 'flat') %}
-            {% set darr = '▲' if p.delta_pct_T2 > 0 else ('▼' if p.delta_pct_T2 < 0 else '―') %}
-            <div class="kpi-delta {{ dcls }}" title="이번 달 일평균 {{ '{:,}'.format(p.mtd.T2) }}명 대비">
-              <span class="kpi-delta-base">MTD 대비</span>
-              {{ darr }} {{ '{:+.1f}'.format(p.delta_pct_T2) }}%
-            </div>
-          {% endif %}
+    {% if focus.total > 0 %}
+      <div class="summary-hero-rows">
+        <div class="summary-row total">
+          <span class="lbl">전체 출국객수</span>
+          <span class="val">{{ "{:,}".format(focus.total) }}<span class="unit">명</span>{{ delta_chip(focus_delta.total, p.reserved.mtd.anchor_label) }}</span>
+          <span class="mtd">
+            {% if focus_rate %}<span class="rate">환율 $1 = ₩<b>{{ "{:,.1f}".format(focus_rate) }}</b></span>{% endif %}
+          </span>
         </div>
-        <div class="kpi-baseline">
-          <span><span class="lbl">MTD</span><b>{{ "{:,}".format(p.mtd.T2) if p.mtd.T2 > 0 else '—' }}</b>명/일</span>
+        <div class="summary-row">
+          <span class="lbl">T1 출국객수</span>
+          <span class="val">{{ "{:,}".format(focus.T1) }}<span class="unit">명</span>{{ delta_chip(focus_delta.T1, p.reserved.mtd.anchor_label) }}</span>
+          <span class="mtd">
+            {% if p.reserved.mtd.T1 > 0 %}({{ p.reserved.mtd.anchor_label }} MTD 평균 <b>{{ "{:,}".format(p.reserved.mtd.T1) }}</b>명){% endif %}
+          </span>
         </div>
-      {% else %}
-        <div class="kpi-empty">D+1 예측 미생성 — 보통 23:30 KST 갱신</div>
-      {% endif %}
-    </div>
+        <div class="summary-row">
+          <span class="lbl">T2 출국객수</span>
+          <span class="val">{{ "{:,}".format(focus.T2) }}<span class="unit">명</span>{{ delta_chip(focus_delta.T2, p.reserved.mtd.anchor_label) }}</span>
+          <span class="mtd">
+            {% if p.reserved.mtd.T2 > 0 %}({{ p.reserved.mtd.anchor_label }} MTD 평균 <b>{{ "{:,}".format(p.reserved.mtd.T2) }}</b>명){% endif %}
+          </span>
+        </div>
+      </div>
+      <div class="summary-hero-foot">
+        ※ 항공사 예약 기준 (환승객 포함)
+      </div>
+    {% else %}
+      <div class="summary-hero-empty">
+        예측 데이터가 아직 발표되지 않았습니다 (매일 17:00 KST 갱신).
+      </div>
+    {% endif %}
   </div>
 
   <!-- 출국장별 예상 승객수 (D+1 평면도) -->
   <section>
     <h2 class="section-title">출국장별</h2>
+    <p class="section-note" style="margin:-4px 0 12px;color:var(--text-light);font-size:12.5px;">
+      ※ 아래 모든 통계(출국장별·일자별·시간대별·도착지별)는 <b>실제 출국장을 통과하는 인원</b> 기준입니다 (환승객 제외).
+    </p>
 
     <div class="map-controls">
       <label class="map-hour">시간대
@@ -682,13 +786,13 @@
             <text class="dg-delta" x="0" y="34">—</text>
           </g>
         </g>
-        <!-- 출국장 5번 (카운터 K·L) — 도면 라벨 x ≈ 200 -->
+        <!-- 출국장 5·6번 (서편, 카운터 K~N) — 원본 데이터가 5,6 합산값으로 제공되어 한 zone으로 표시 -->
         <g class="dg-zone" data-key="t1dg5">
           <title></title>
-          <rect class="dg-rect" x="150" y="295" width="100" height="185" rx="10" ry="10"/>
-          <g class="badge" transform="translate(200, 387)">
-            <rect class="badge-bg" x="-46" y="-44" width="92" height="88" rx="9" ry="9"/>
-            <text class="dg-label" x="0" y="-26">5번</text>
+          <rect class="dg-rect" x="80" y="305" width="120" height="170" rx="10" ry="10"/>
+          <g class="badge" transform="translate(140, 392)">
+            <rect class="badge-bg" x="-50" y="-44" width="100" height="88" rx="9" ry="9"/>
+            <text class="dg-label" x="0" y="-26">5·6번</text>
             <text class="dg-pax" x="0" y="-2">—</text>
             <text class="dg-mtd" x="0" y="18">—</text>
             <text class="dg-delta" x="0" y="34">—</text>
@@ -847,6 +951,22 @@
     </div>
   </section>
 
+  <!-- 도착지별 — 마케팅 핵심 데이터 -->
+  <section>
+    <h2 class="section-title">도착지별</h2>
+
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>T1</h3>
+        <div id="chart-route-summary-t1" class="chart"></div>
+      </div>
+      <div class="chart-card">
+        <h3>T2</h3>
+        <div id="chart-route-summary-t2" class="chart"></div>
+      </div>
+    </div>
+  </section>
+
   <div class="footnote">
     <ul>
       <li>데이터 출처 : <a href="https://www.airport.kr/ap_ko/883/subview.do" target="_blank" rel="noopener">인천국제공항공사 공항 예상 혼잡도</a></li>
@@ -857,7 +977,14 @@
           <li><b>알고리즘</b> — 인천공항 측이 비공개 (예상값이므로 실제와 차이 가능)</li>
         </ul>
       </li>
-      <li>T1 6번 출국장은 교통약자 우대 출구로 집계에서 제외됩니다.</li>
+      <li>통계 기준 :
+        <ul style="margin-top:3px;">
+          <li><b>핵심 요약 카드</b> — 항공사 예약 기준 (환승객 포함). 매장 매출 잠재 인원 파악용.</li>
+          <li><b>그 외 모든 통계</b> (출국장별·일자별·시간대별·도착지별) — 실제 출국장 통과 인원 (환승객 제외).</li>
+        </ul>
+      </li>
+      <li>환율 출처 : 서울외국환중개(주) 전일 고시환율 (모든 국내 면세점 공통 적용).</li>
+      <li>T1 5·6번 출국장은 인천공항 측 데이터 정의에 따라 합산값으로 표시됩니다.</li>
     </ul>
     <p style="text-align:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-light);letter-spacing:0.2px;">
       Built with Claude Code by 신라면세점 인천공항점 (마케팅)
@@ -875,7 +1002,7 @@
     <h2 id="exportModalTitle">Raw Data Download</h2>
     <p>선택한 기간의 시간대별 출국장 예상 승객수 원본 데이터를 CSV 파일로 저장합니다. (최대 90일)</p>
     <div style="background:#FFFBE6;border:1px solid #FCEAA0;border-radius:6px;padding:10px 12px;margin:0 0 16px 0;font-size:12px;line-height:1.6;color:#7A5B00;">
-      <b>⚠ 시간대별 출국장 예상 승객수 원본</b>입니다. <code>출처</code> 컬럼으로 d0=실측 / d1=예측 / web=스크래핑 / none=없음을 구분할 수 있습니다.
+      <b>시간대별 출국장 예상 승객수 + 권역별 분포 원본</b>입니다 (airport.kr 공식 엑셀 기반).
     </div>
     <form id="exportForm" onsubmit="doExport(event)">
       <table>
@@ -945,8 +1072,16 @@
   });
   var sharedYRange = [0, Math.ceil(hourlyMax * 1.1 / 1000) * 1000];
 
-  // 시간대별 T1 — 내일 예상(실선) vs MTD 평균(점선)
+  // 시간대별 T1 — MTD 평균(점선) vs 내일 예상(실선) — 도착지별과 동일 순서
   Plotly.newPlot('chart-hourly-t1', [
+    {
+      x: hourTicks(),
+      y: P.mtd_hourly.T1,
+      type: 'scatter', mode: 'lines',
+      line: { color: '#9AA0A6', width: 1.5, dash: 'dot' },
+      opacity: 0.85,
+      name: 'MTD 평균',
+    },
     {
       x: hourTicks(),
       y: P.tomorrow_hourly.T1,
@@ -955,21 +1090,21 @@
       marker: { size: 5 },
       name: '내일 예상',
     },
-    {
-      x: hourTicks(),
-      y: P.mtd_hourly.T1,
-      type: 'scatter', mode: 'lines',
-      line: { color: '#9AA0A6', width: 1.5, dash: 'dot' },
-      opacity: 0.85,
-      name: 'MTD',
-    },
   ], Object.assign({}, COMMON_LAYOUT, {
     yaxis: { title: { text: '객수(명)', standoff: 8 }, range: sharedYRange, gridcolor: '#EAECF0' },
     xaxis: { tickfont: { size: 9 }, tickangle: -45 },
   }), CONFIG);
 
-  // 시간대별 T2 — 내일 예상(실선) vs MTD 평균(점선)
+  // 시간대별 T2 — MTD 평균(점선) vs 내일 예상(실선) — 도착지별과 동일 순서
   Plotly.newPlot('chart-hourly-t2', [
+    {
+      x: hourTicks(),
+      y: P.mtd_hourly.T2,
+      type: 'scatter', mode: 'lines',
+      line: { color: '#9AA0A6', width: 1.5, dash: 'dot' },
+      opacity: 0.85,
+      name: 'MTD 평균',
+    },
     {
       x: hourTicks(),
       y: P.tomorrow_hourly.T2,
@@ -978,28 +1113,102 @@
       marker: { size: 5 },
       name: '내일 예상',
     },
-    {
-      x: hourTicks(),
-      y: P.mtd_hourly.T2,
-      type: 'scatter', mode: 'lines',
-      line: { color: '#9AA0A6', width: 1.5, dash: 'dot' },
-      opacity: 0.85,
-      name: 'MTD',
-    },
   ], Object.assign({}, COMMON_LAYOUT, {
     yaxis: { title: { text: '객수(명)', standoff: 8 }, range: sharedYRange, gridcolor: '#EAECF0' },
     xaxis: { tickfont: { size: 9 }, tickangle: -45 },
   }), CONFIG);
 
+  // ===== 노선별 (권역) 차트 =====
+  // 권역 7개 + 색상 팔레트 (차별성 우선)
+  var REGION_COLORS = {
+    '일본': '#E63946',
+    '중국': '#F4A261',
+    '동남아': '#2A9D8F',
+    '미주': '#264653',
+    '유럽': '#6A4C93',
+    '오세아니아': '#FFB703',
+    '기타': '#ADB5BD',
+  };
+
+  function drawRouteSummary(elId, summary, mtd, baseColor, yRange) {
+    if (!summary || !summary.regions) return;
+    var regions = summary.regions;
+    var mtdValues = (mtd && mtd.values) || regions.map(function() { return 0; });
+    Plotly.newPlot(elId, [
+      {
+        x: regions, y: mtdValues,
+        type: 'bar', name: 'MTD 평균',
+        marker: { color: '#D0D5DD' },
+        text: mtdValues.map(function(v) { return v > 0 ? v.toLocaleString() : ''; }),
+        textposition: 'outside', textfont: { size: 10, color: '#6B7280' },
+        hovertemplate: '%{x}<br>MTD: %{y:,}명<extra></extra>',
+      },
+      {
+        x: regions, y: summary.values,
+        type: 'bar', name: '내일 예상',
+        marker: { color: baseColor },
+        text: summary.values.map(function(v) { return v > 0 ? v.toLocaleString() : ''; }),
+        textposition: 'outside', textfont: { size: 10 },
+        hovertemplate: '%{x}<br>내일: %{y:,}명<extra></extra>',
+      },
+    ], Object.assign({}, COMMON_LAYOUT, {
+      barmode: 'group', bargap: 0.25, bargroupgap: 0.08,
+      yaxis: { title: { text: '객수(명)', standoff: 8 }, gridcolor: '#EAECF0', range: yRange },
+      xaxis: { tickfont: { size: 11 } },
+      // 범례를 plot area 안쪽 좌상단으로 → 카드 h3와 차트 사이 여백 제거
+      legend: { orientation: 'h', x: 0, y: 0.99, yanchor: 'top', xanchor: 'left',
+                bgcolor: 'rgba(255,255,255,0.85)', font: { size: 11 } },
+      margin: Object.assign({}, COMMON_LAYOUT.margin || {}, { t: 6 }),
+    }), CONFIG);
+  }
+
+  function drawRouteStack(elId, routeMatrix) {
+    if (!routeMatrix || !routeMatrix.matrix) return;
+    var hours = hourTicks();
+    var traces = routeMatrix.regions.map(function(region, idx) {
+      return {
+        x: hours,
+        y: routeMatrix.matrix[idx],
+        type: 'bar',
+        name: region,
+        marker: { color: REGION_COLORS[region] || '#888' },
+        hovertemplate: region + '<br>%{x}: %{y:,}명<extra></extra>',
+      };
+    });
+    Plotly.newPlot(elId, traces, Object.assign({}, COMMON_LAYOUT, {
+      barmode: 'stack', bargap: 0.05,
+      yaxis: { title: { text: '객수(명)', standoff: 8 }, gridcolor: '#EAECF0' },
+      xaxis: { tickfont: { size: 9 }, tickangle: -45 },
+      legend: { orientation: 'h', x: 0, y: 1.12, font: { size: 10 } },
+      margin: Object.assign({}, COMMON_LAYOUT.margin || {}, { t: 30 }),
+    }), CONFIG);
+  }
+
+  // T1·T2 공통 y축 범위 (모든 권역 + MTD/내일 값에서 최댓값 기준)
+  var routeMaxAll = 0;
+  [P.tomorrow_route_summary_T1, P.tomorrow_route_summary_T2,
+   P.mtd_route_T1, P.mtd_route_T2].forEach(function(s) {
+    var arr = (s && s.values) || [];
+    arr.forEach(function(v) { if (v > routeMaxAll) routeMaxAll = v; });
+  });
+  // 데이터 라벨이 막대 위에 출력되므로 ~18% 여유 + 1k 단위 ceil
+  var routeYRange = [0, Math.max(1000, Math.ceil(routeMaxAll * 1.18 / 1000) * 1000)];
+
+  drawRouteSummary('chart-route-summary-t1', P.tomorrow_route_summary_T1, P.mtd_route_T1, '#1F6FEB', routeYRange);
+  drawRouteSummary('chart-route-summary-t2', P.tomorrow_route_summary_T2, P.mtd_route_T2, '#C26420', routeYRange);
+
   // ===== 출국장 평면도 =====
+  // SVG는 6개 zone이지만 데이터 소스(airport.kr 엑셀)는 5·6번을 합산해 제공한다.
+  // 따라서 SVG의 t1dg5/t1dg6 두 zone은 동일한 t1dg56 데이터를 공유한다.
   var MAP_KEYS = ['t1dg1','t1dg2','t1dg3','t1dg4','t1dg5','t1dg6','t2dg1','t2dg2'];
+  var MAP_DATA_ALIAS = { t1dg5: 't1dg56', t1dg6: 't1dg56' };  // SVG key → payload key
   var MAP_LABEL = {
     t1dg1: 'T1 1번 출국장 (동편 끝, 카운터 A·B)',
     t1dg2: 'T1 2번 출국장 (카운터 C·D·E)',
     t1dg3: 'T1 3번 출국장 (카운터 F·G)',
     t1dg4: 'T1 4번 출국장 (카운터 H·J)',
-    t1dg5: 'T1 5번 출국장 (카운터 K·L)',
-    t1dg6: 'T1 6번 출국장 (서편 끝, 카운터 M·N)',
+    t1dg5: 'T1 5·6번 출국장 (서편, 카운터 K~N) — 합산값',
+    t1dg6: 'T1 5·6번 출국장 (서편, 카운터 K~N) — 합산값',
     t2dg1: 'T2 1번 출국장 (동편, 카운터 A~D)',
     t2dg2: 'T2 2번 출국장 (서편, 카운터 E~H)',
   };
@@ -1039,15 +1248,22 @@
 
     var values = {}, mtdValues = {};
     var t1Sum = 0, t2Sum = 0, max = 0;
+    // 원본 데이터에서 5·6번 출국장은 합산값(t1dg56)으로 제공된다.
+    // → 6번 zone은 시각적으로 숨기고 5번 zone에만 합산값을 한 번 표시한다.
+    var hideDg6 = document.querySelector('.dg-zone[data-key="t1dg6"]');
+    if (hideDg6) hideDg6.style.display = 'none';
+
     MAP_KEYS.forEach(function(k) {
-      var arr = perGate[k] || [];
+      if (k === 't1dg6') { values[k] = 0; mtdValues[k] = 0; return; }
+      var dataKey = MAP_DATA_ALIAS[k] || k;  // 5·6 합산: t1dg5는 t1dg56 사용
+      var arr = perGate[dataKey] || [];
       var v = _sumHours(arr, hours);
       values[k] = v;
       // MTD: 전체면 일평균 그대로, 시간대 그룹이면 오늘의 동일 그룹 비율로 스케일
-      var mtdDay = gateMtd[k] || 0;
+      var mtdDay = gateMtd[dataKey] || 0;
       var mtdH = mtdDay;
       if (hours && mtdDay > 0) {
-        var todayArr = todayPerGate[k] || [];
+        var todayArr = todayPerGate[dataKey] || [];
         var todayDaySum = _sumHours(todayArr, null);
         if (todayDaySum > 0) {
           var ratio = _sumHours(todayArr, hours) / todayDaySum;
@@ -1057,11 +1273,17 @@
         }
       }
       mtdValues[k] = mtdH;
-      if (k.indexOf('t1') === 0) t1Sum += v; else t2Sum += v;
+      // 5·6 합산값을 두 zone에 동일 표시 → t1Sum 중복 가산 방지
+      if (k.indexOf('t1') === 0) {
+        if (k !== 't1dg6') t1Sum += v;
+      } else {
+        t2Sum += v;
+      }
       if (v > max) max = v;
     });
 
     MAP_KEYS.forEach(function(k) {
+      if (k === 't1dg6') return;  // 5·6 합산 → 6번 zone은 숨김
       var v = values[k];
       var mtdH = mtdValues[k];
       var t = max > 0 ? v / max : 0;
@@ -1072,26 +1294,19 @@
       var deltaText = zoneEl ? zoneEl.querySelector('.dg-delta') : null;
       var titleEl = zoneEl ? zoneEl.querySelector('title') : null;
 
-      // T1 6번 = 교통약자 우대 출구 (공식 가이드: 혼잡도 집계 제외)
-      var isMobilityGate = (k === 't1dg6');
       var inactive = (v === 0 && mtdH === 0);
       var noData = (max === 0);
 
-      // 3-state 시각 분리: mobility(빗금) / inactive(점선 테두리) / nodata(무채색)
       if (zoneEl) {
-        zoneEl.classList.toggle('is-mobility', isMobilityGate);
-        zoneEl.classList.toggle('is-inactive', !isMobilityGate && !noData && inactive);
-        zoneEl.classList.toggle('is-nodata', !isMobilityGate && noData);
+        zoneEl.classList.toggle('is-mobility', false);
+        zoneEl.classList.toggle('is-inactive', !noData && inactive);
+        zoneEl.classList.toggle('is-nodata', noData);
       }
-      if (rect && !isMobilityGate && !noData) {
+      if (rect && !noData) {
         rect.setAttribute('fill', fillForRatio(t, k));
       }
       if (paxText) {
-        if (isMobilityGate) {
-          paxText.textContent = '교통약자';
-          paxText.style.fontSize = '12px';
-          paxText.style.fontWeight = '700';
-        } else if (max > 0 && inactive) {
+        if (max > 0 && inactive) {
           paxText.textContent = '미운영';
           paxText.style.fontSize = '12px';
           paxText.style.fontWeight = '700';
@@ -1102,25 +1317,16 @@
         }
       }
       if (mtdText) {
-        if (isMobilityGate) {
-          mtdText.textContent = '우대 출구';
-          mtdText.style.fontSize = '12px';
-          mtdText.style.fontWeight = '700';
+        mtdText.style.fontSize = '';
+        mtdText.style.fontWeight = '';
+        if (!inactive && mtdH > 0) {
+          mtdText.textContent = '평균 ' + mtdH.toLocaleString();
         } else {
-          mtdText.style.fontSize = '';
-          mtdText.style.fontWeight = '';
-          if (!inactive && mtdH > 0) {
-            mtdText.textContent = '평균 ' + mtdH.toLocaleString();
-          } else {
-            mtdText.textContent = '';
-          }
+          mtdText.textContent = '';
         }
       }
       if (deltaText) {
-        if (isMobilityGate) {
-          deltaText.textContent = '집계 제외';
-          deltaText.setAttribute('fill', '#909090');
-        } else if (!inactive && mtdH > 0 && v > 0) {
+        if (!inactive && mtdH > 0 && v > 0) {
           var pct = (v - mtdH) / mtdH * 100;
           var arrow = pct > 0.05 ? '▲' : (pct < -0.05 ? '▼' : '―');
           var color = pct > 0.05 ? '#8C0023' : (pct < -0.05 ? '#2A52BE' : '#909090');
@@ -1135,9 +1341,7 @@
       var pct2 = sumAll > 0 ? Math.round(v / sumAll * 1000) / 10 : 0;
       var mtdNote = (mtdH > 0) ? ' · 평균 ' + mtdH.toLocaleString() + '명' : '';
       var ariaText;
-      if (isMobilityGate) {
-        ariaText = MAP_LABEL[k] + ' — 교통약자 우대 출구, 혼잡도 집계 제외';
-      } else if (inactive) {
+      if (inactive) {
         ariaText = MAP_LABEL[k] + ' — 미운영';
       } else if (max === 0) {
         ariaText = MAP_LABEL[k] + ' — 데이터 없음';

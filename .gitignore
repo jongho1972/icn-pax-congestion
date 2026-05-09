@@ -6,3 +6,7 @@ __pycache__/
 venv/
 *.ipynb_checkpoints
 *.docx
+
+# 사용자 수동 다운로드 또는 검증용 원본 엑셀 (자동 수집은 backfill_excel.py가 직접 파싱)
+Daily_Data/excel_files/
+Daily_Data/raw_xls/
