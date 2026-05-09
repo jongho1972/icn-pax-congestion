@@ -10,3 +10,6 @@ venv/
 # 사용자 수동 다운로드 또는 검증용 원본 엑셀 (자동 수집은 backfill_excel.py가 직접 파싱)
 Daily_Data/excel_files/
 Daily_Data/raw_xls/
+
+# suffix 붙은 임시·실험용 pkl (운영 코드는 passgr_YYYYMMDD.pkl만 인식)
+Daily_Data/passgr_*_*.pkl
