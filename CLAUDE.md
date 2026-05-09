@@ -107,7 +107,7 @@ uvicorn main:app --reload --port 8000
 - **GitHub Actions** `.github/workflows/refresh-cache.yml`
   - 스케줄: **17:10 KST + 23:35 KST** (backfill 5분 후)
   - `POST /api/refresh` (헤더 `X-Refresh-Token`)
-- **GitHub Actions** `.github/workflows/keep-alive.yml` — 10분마다 GET / (콜드 슬립 방지)
+- **외부 cron** cron-job.org — 14분 간격 `GET /healthz`. Render 무료 슬립 방지 + 페이로드 캐시 워밍 (출발항공편조회와 동일 패턴, GH Actions 한도 절약)
 - **GitHub Actions** `.github/workflows/daily-mailer.yml`
   - 스케줄: **17:30 KST**
   - Playwright headless chromium → 비번 입력 → `body.capturing` + 1.5배 zoom → `.container` PNG 캡처 → SMTP 발송
