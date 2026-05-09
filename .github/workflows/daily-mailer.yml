@@ -11,6 +11,10 @@ on:
         required: false
         default: ''
 
+env:
+  # 2026-06-02 Node 20 → 24 강제 전환 대비, JS actions 즉시 Node 24로 동작
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   mail:
     runs-on: ubuntu-latest
