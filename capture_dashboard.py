@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""인천공항 출국장 예상 승객수 대시보드 .container 영역 PNG 캡처 (Playwright sync_api).
+"""인천공항 국제선 예상 승객수 대시보드 .container 영역 PNG 캡처 (Playwright sync_api).
 
 GitHub Actions 등 헤드리스 환경에서 실행. 비번 게이트 통과 + body.capturing 클래스 +
 1.5배 확대 후 .container 캡처. 메일링 스크립트 send_daily_email.py가 이 PNG를 첨부한다.

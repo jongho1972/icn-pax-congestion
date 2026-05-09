@@ -61,11 +61,11 @@ jobs:
           from email.mime.text import MIMEText
           from email.utils import formataddr
           body = (
-              "인천공항 출국장 예상 승객수 일일 메일 발송이 실패했습니다.\n\n"
+              "인천공항 국제선 예상 승객수 일일 메일 발송이 실패했습니다.\n\n"
               f"워크플로우 로그: {os.environ['RUN_URL']}\n"
           )
           msg = MIMEText(body, "plain", "utf-8")
-          msg["Subject"] = "[실패] 인천공항 출국장 예상 승객수 일일 메일러"
+          msg["Subject"] = "[실패] 인천공항 국제선 예상 승객수 일일 메일러"
           msg["From"] = formataddr(("인천공항점(마케팅)", os.environ["GMAIL_USER"]))
           msg["To"] = os.environ["NOTIFY_TO"]
           pw = "".join(os.environ["GMAIL_APP_PASSWORD"].split())

@@ -47,7 +47,7 @@ DAILY_DIR = BASE / "Daily_Data"
 DAILY_TREND_DAYS = 30  # 일자별 차트 표시 일수 (D-29 ~ D+1)
 DATA_START_DATE = date(2026, 5, 1)  # 엑셀 데이터 첫 일자 (5/1부터 백필)
 
-app = FastAPI(title="인천공항 출국장 혼잡도")
+app = FastAPI(title="인천공항 국제선 예상 승객수")
 app.add_middleware(GZipMiddleware, minimum_size=500)
 app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE / "templates"))
