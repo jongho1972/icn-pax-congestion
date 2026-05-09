@@ -25,7 +25,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install python-dotenv playwright
+          pip install python-dotenv playwright pandas requests xlrd holidays
           playwright install --with-deps chromium
 
       - name: Capture dashboard
