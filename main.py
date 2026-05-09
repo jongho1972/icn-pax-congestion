@@ -388,8 +388,8 @@ async def healthz():
 def _build_export_rows(daily_map: dict[str, tuple[dict, str]]):
     """일자별 시간대별 wide CSV (T1 출국장 5개 + T2 2개 + 권역 7개 × 2터미널 + KPI 카드 일자 합계)."""
     header = (
-        ["전체출국객수", "T1출국객수", "T2출국객수"]
-        + ["날짜", "시간대"]
+        ["날짜", "시간대"]
+        + ["전체출국객수", "T1출국객수", "T2출국객수"]
         + [f"T1출국{g}" for g in T1_GATES]
         + ["T1출국합계"]
         + [f"T2출국{g}" for g in T2_GATES]
@@ -417,7 +417,7 @@ def _build_export_rows(daily_map: dict[str, tuple[dict, str]]):
             t2d = t2_dep.get(hour_key, {})
             t1r = t1_rt.get(hour_key, {})
             t2r = t2_rt.get(hour_key, {})
-            row = [total_kpi, t1_kpi, t2_kpi, ymd, hour_key]
+            row = [ymd, hour_key, total_kpi, t1_kpi, t2_kpi]
             for g in T1_GATES:
                 row.append(int(t1d.get(g) or 0))
             row.append(int(t1d.get("total") or 0))
