@@ -20,11 +20,63 @@ from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 
+from icn_utils.aggregator import mtd_reserved, reserved_summary
+from icn_utils.data_loader import load_day, load_range
+from icn_utils.exchange_rate import load_rates
+
 ROOT = Path(__file__).parent
 load_dotenv(ROOT / ".env")
 
 DASHBOARD_URL = "https://jhawk-pax-congestion.onrender.com"
 MAILING_LIST_PATH = ROOT / "mailing_list.txt"
+DAILY_DIR = ROOT / "Daily_Data"
+WEEKDAY_HANJA = ["月", "火", "水", "木", "金", "土", "日"]
+
+
+def build_kpi_block() -> tuple[str, str]:
+    """대시보드와 동일한 SMS 기준(예약합계 출국)으로 KPI 텍스트를 만들어 반환.
+
+    focus 일자 = tomorrow 발표(reserved.tomorrow.total>0) 시 내일, 아니면 오늘.
+    Returns: (kpi_text_with_newlines, focus_yyyy_mm_dd)
+    """
+    today = datetime.now(ZoneInfo("Asia/Seoul")).date()
+    tomorrow = today + timedelta(days=1)
+    today_ymd = today.strftime("%Y%m%d")
+    tomorrow_ymd = tomorrow.strftime("%Y%m%d")
+
+    today_data, _ = load_day(str(DAILY_DIR), today_ymd)
+    tomorrow_data, _ = load_day(str(DAILY_DIR), tomorrow_ymd)
+
+    first = today.replace(day=1)
+    daily_map = load_range(str(DAILY_DIR), first, tomorrow)
+
+    reserved = reserved_summary(today_data, tomorrow_data)
+    mtd = mtd_reserved(daily_map, today)
+    rates = load_rates(DAILY_DIR)
+
+    focus_is_tomorrow = bool(reserved["tomorrow"]["total"] > 0)
+    focus_date = tomorrow if focus_is_tomorrow else today
+    focus_ymd = tomorrow_ymd if focus_is_tomorrow else today_ymd
+    focus_kpi = reserved["tomorrow"] if focus_is_tomorrow else reserved["today"]
+
+    weekday_kr = WEEKDAY_HANJA[focus_date.weekday()]
+    rate_value = rates.get(focus_ymd) or rates.get(today_ymd)
+    rate_str = f"{rate_value:,.1f}" if rate_value else "—"
+
+    def fmt_n(n: int) -> str:
+        return f"{n:,}명" if n else "명"
+
+    anchor = mtd["anchor_label"]
+    text = (
+        f"{focus_date.month}/{focus_date.day}일({weekday_kr})\n"
+        f"전체 출국객수: {fmt_n(focus_kpi['total'])}\n"
+        f"T1 출국객수: {fmt_n(focus_kpi['T1'])}\n"
+        f"({anchor} MTD 평균 {fmt_n(mtd['T1'])})\n"
+        f"T2 출국객수: {fmt_n(focus_kpi['T2'])}\n"
+        f"({anchor} MTD 평균 {fmt_n(mtd['T2'])})\n"
+        f"환율 $1=₩{rate_str}"
+    )
+    return text, focus_date.strftime("%Y-%m-%d")
 
 
 def load_recipients() -> list[str]:
@@ -47,7 +99,7 @@ def load_recipients() -> list[str]:
     return parts
 
 
-def send(image_path: Path, recipients: list[str], date_str: str) -> None:
+def send(image_path: Path, recipients: list[str], date_str: str, kpi_text: str) -> None:
     user = os.environ["GMAIL_USER"].strip()
     password = "".join(os.environ["GMAIL_APP_PASSWORD"].split())
 
@@ -63,8 +115,10 @@ def send(image_path: Path, recipients: list[str], date_str: str) -> None:
     html = f"""<!doctype html>
 <html><body style="font-family:'Noto Sans KR','Helvetica Neue',Arial,sans-serif;color:#222;background:#f7f7fa;padding:20px;margin:0;">
   <div style="max-width:960px;margin:0 auto;background:#fff;padding:28px;border-radius:8px;border:1px solid #e5e5ea;">
+    <p style="margin:0 0 12px 0;font-size:14px;color:#444;">[WEB발신]</p>
     <p style="margin:0 0 12px 0;font-size:14px;color:#444;">안녕하세요,</p>
     <p style="margin:0 0 20px 0;font-size:14px;color:#444;"><strong>인천공항 출국장 예상 승객수</strong>를 공유드립니다.</p>
+    <div style="margin:0 0 20px 0;font-size:14px;color:#444;line-height:1.7;white-space:pre-line;">{kpi_text}</div>
     <p style="margin:0 0 20px 0;">
       <img src="cid:dashboard" alt="인천공항 출국장 예상 승객수 {date_str}" style="max-width:100%;height:auto;display:block;border:1px solid #ddd;border-radius:4px;">
     </p>
@@ -107,7 +161,8 @@ def main() -> int:
         print(f"이미지 파일이 없습니다: {args.image}", file=sys.stderr)
         return 1
 
-    target_date = (datetime.now(ZoneInfo("Asia/Seoul")) + timedelta(days=1)).strftime("%Y-%m-%d")
+    kpi_text, target_date = build_kpi_block()
+    print(f"[KPI] focus={target_date}\n{kpi_text}", flush=True)
 
     if args.test:
         recipients = [os.environ["GMAIL_USER"]]
@@ -118,7 +173,7 @@ def main() -> int:
             return 1
 
     print(f"[MAIL] recipients (count={len(recipients)}): {recipients}", flush=True)
-    send(args.image, recipients, target_date)
+    send(args.image, recipients, target_date, kpi_text)
     print(f"발송 완료: {target_date} → {recipients}", flush=True)
     return 0
 
