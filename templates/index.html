@@ -108,69 +108,97 @@
   </script>
   <link rel="preconnect" href="https://cdn.plot.ly" crossorigin>
   <link rel="preload" as="script" href="https://cdn.plot.ly/plotly-basic-2.35.3.min.js" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     :root {
+      --navy-900:   #0B2E5C;
+      --navy-700:   #13407F;
+      --blue-500:   #1F6FEB;
+      --blue-050:   #DCE8F6;
+      --blue-025:   #F4F7FB;
+      --orange-600: #C26420;
+      --orange-025: #FBF3EB;
+      --red-600:    #B42318;
       --crimson:    #8C0023;
-      --gold:       #B8922A;
+      --delta-blue: #2A52BE;
+      --slate-700:  #334155;
+      --slate-500:  #64748B;
+      --slate-400:  #94A3B8;
+      --slate-200:  #CBD5E1;
+      --slate-100:  #E5EAF0;
+      --slate-050:  #EEF2F6;
       --t1:         #1F6FEB;
       --t1-soft:    #DCE8F6;
       --t2:         #C26420;
       --t2-soft:    #F7E4D2;
-      --bg:         #FAFAF8;
       --card:       #FFFFFF;
-      --text:       #1A1A1A;
-      --text-mid:   #4A4A4A;
-      --text-light: #909090;
-      --border:     rgba(0,0,0,0.08);
+      --text:       #111827;
+      --text-mid:   #334155;
+      --text-light: #64748B;
+      --border:     #E5EAF0;
       --red-day:    #B42318;
-      --future-bg:  #FFFBE6;
+      --future-bg:  #FFF8E1;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
     body {
-      font-family: 'Outfit', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard",
+                   "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+      background: #ffffff;
       color: var(--text);
+      letter-spacing: -0.011em;
       -webkit-font-smoothing: antialiased;
     }
     .container {
-      max-width: 1200px;
+      max-width: 1120px;
       margin: 0 auto;
-      padding: 28px 24px 60px;
+      padding: 2.5rem 1.5rem 3rem;
     }
+
+    /* 헤더 */
     .topbar {
-      display: flex; align-items: center; justify-content: space-between;
-      flex-wrap: wrap; gap: 12px;
-      padding-bottom: 18px; border-bottom: 2px solid var(--crimson);
-      margin-bottom: 24px;
+      display: flex; align-items: baseline;
+      justify-content: space-between; gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
     }
     .topbar h1 {
-      font-size: 22px; font-weight: 800; color: var(--crimson);
-      margin: 0; letter-spacing: -0.3px;
+      font-weight: 800; color: var(--navy-900);
+      margin: 0; font-size: 1.875rem;
+      letter-spacing: -0.025em; line-height: 1.2;
     }
-    .meta { color: var(--text-light); font-size: 12px; line-height: 1.5; }
-    .meta b { color: var(--text-mid); font-weight: 600; }
+    .period-note {
+      color: var(--slate-500); font-size: 13px; line-height: 1.5;
+      margin-top: 8px; letter-spacing: -0.01em;
+    }
+    .update-badge {
+      color: var(--slate-500);
+      font-size: 13px; line-height: 1.5; font-weight: 500;
+      font-family: ui-monospace, "SF Mono", monospace;
+      letter-spacing: 0;
+    }
+    .meta { color: var(--slate-500); font-size: 13px; line-height: 1.5; }
+    .meta b { color: var(--slate-700); font-weight: 600; }
 
     /* 헤더 우측 액션 영역 */
     .header-actions {
-      display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap;
     }
     .action-btn {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 7px 14px; border-radius: 7px;
-      font-size: 12.5px; font-weight: 700; letter-spacing: -0.01em;
-      background: var(--crimson); color: #fff;
+      padding: 6px 12px; border-radius: 6px;
+      font-size: 13px; font-weight: 600;
+      background: var(--navy-900); color: #fff;
       border: none; cursor: pointer; font-family: inherit;
-      transition: background 0.15s, transform 0.05s;
+      letter-spacing: -0.01em;
+      transition: background 0.15s;
     }
-    .action-btn:hover { background: #a80030; }
-    .action-btn:active { transform: translateY(1px); }
-    .action-btn:disabled { background: var(--text-light); cursor: wait; }
-    .action-btn.secondary { background: #2A52BE; }
-    .action-btn.secondary:hover { background: #1d3f96; }
+    .action-btn:hover { background: var(--navy-700); }
+    .action-btn:disabled { background: var(--slate-400); cursor: wait; }
+    .action-btn.secondary { background: var(--navy-700); }
+    .action-btn.secondary:hover { background: var(--navy-900); }
     /* 캡처 중 우측 액션 영역 숨김 */
-    body.capturing .header-actions { visibility: hidden; }
+    body.capturing .header-actions,
+    body.capturing .update-badge { visibility: hidden; }
 
     /* 모달 */
     .modal-backdrop {
@@ -181,60 +209,60 @@
     }
     .modal-backdrop.open { display: flex; }
     .modal {
-      background: #fff; border-radius: 12px; width: 100%; max-width: 540px;
+      background: #fff; border-radius: 8px; width: 100%; max-width: 540px;
       box-shadow: 0 20px 50px rgba(0,0,0,0.2);
       padding: 24px 28px; position: relative;
     }
     .modal-close {
       position: absolute; top: 12px; right: 12px;
       background: transparent; border: none;
-      font-size: 18px; color: var(--text-light);
+      font-size: 18px; color: var(--slate-500);
       cursor: pointer; padding: 4px 10px; border-radius: 4px; line-height: 1;
     }
-    .modal-close:hover { background: #F8F8F5; color: var(--text); }
-    .modal h2 { margin: 0 0 8px 0; font-size: 18px; color: var(--text); font-weight: 800; letter-spacing: -0.3px; }
-    .modal p { color: var(--text-mid); font-size: 13px; margin: 0 0 14px 0; line-height: 1.55; }
+    .modal-close:hover { background: var(--slate-050); color: var(--navy-900); }
+    .modal h2 { margin: 0 0 8px 0; font-size: 18px; color: var(--navy-900); font-weight: 700; letter-spacing: -0.02em; }
+    .modal p { color: var(--slate-500); font-size: 13px; margin: 0 0 16px 0; line-height: 1.55; }
     .modal table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .modal td { padding: 8px 6px; }
     .modal input {
-      width: 100%; padding: 7px 10px; font-size: 13px;
-      border: 1px solid var(--border); border-radius: 6px;
+      width: 100%; padding: 5px 8px; font-size: 13px;
+      border: 1px solid var(--slate-200); border-radius: 4px;
       font-family: inherit;
     }
     .modal input:focus {
-      outline: 2px solid #DCE8F6; border-color: var(--t1);
+      outline: 2px solid var(--blue-050); border-color: var(--blue-500);
     }
     .modal-actions {
       margin-top: 18px; display: flex; gap: 8px; justify-content: flex-end;
       align-items: center;
     }
-    .modal-actions .result { flex: 1; font-size: 12px; color: var(--text-light); }
-    .modal-actions .result.ok { color: #1B7A3E; font-weight: 600; }
-    .modal-actions .result.err { color: var(--red-day); font-weight: 600; }
+    .modal-actions .result { flex: 1; font-size: 12px; color: var(--slate-500); }
+    .modal-actions .result.ok { color: #047857; font-weight: 600; }
+    .modal-actions .result.err { color: var(--red-600); font-weight: 600; }
     .modal-btn {
-      padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 700;
+      padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600;
       cursor: pointer; font-family: inherit; border: none;
     }
-    .modal-btn.cancel { background: transparent; color: var(--text-mid);
-                        border: 1px solid var(--border); }
-    .modal-btn.primary { background: var(--crimson); color: #fff; }
-    .modal-btn.primary:hover { background: #a80030; }
-    .modal-btn.primary:disabled { background: var(--text-light); cursor: wait; }
+    .modal-btn.cancel { background: transparent; color: var(--slate-500);
+                        border: 1px solid var(--slate-200); }
+    .modal-btn.primary { background: var(--navy-900); color: #fff; }
+    .modal-btn.primary:hover { background: var(--navy-700); }
+    .modal-btn.primary:disabled { background: var(--slate-400); cursor: wait; }
 
     /* 진행 상태바 */
     .progress-wrap { margin-top: 14px; display: none; }
     .progress-wrap.active { display: block; }
     .progress-track {
-      width: 100%; height: 6px; background: #F2F4F7;
+      width: 100%; height: 6px; background: var(--slate-100);
       border-radius: 3px; overflow: hidden;
     }
     .progress-fill {
-      height: 100%; background: var(--crimson);
+      height: 100%; background: var(--navy-900);
       width: 0%; transition: width 0.15s ease-out;
     }
     .progress-fill.indeterminate {
       width: 35%;
-      background: linear-gradient(90deg, transparent, var(--crimson), transparent);
+      background: linear-gradient(90deg, transparent, var(--navy-900), transparent);
       animation: progress-slide 1.1s ease-in-out infinite;
     }
     @keyframes progress-slide {
@@ -243,7 +271,7 @@
     }
     .progress-label {
       margin-top: 6px;
-      font-size: 12px; color: var(--text-light);
+      font-size: 12px; color: var(--slate-500);
       font-variant-numeric: tabular-nums;
     }
 
@@ -252,30 +280,29 @@
       position: relative;
       background: #FFFFFF;
       color: var(--text);
-      border: 1px solid var(--border);
-      border-left: 4px solid var(--crimson);
-      border-radius: 12px;
+      border: 1px solid var(--slate-100);
+      border-left: 4px solid var(--navy-900);
+      border-radius: 8px;
       padding: 22px 26px 20px;
-      margin: 0 0 24px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      margin: 1.5rem 0 1.5rem;
     }
     .summary-hero-head {
       display: flex; align-items: baseline; justify-content: space-between;
       gap: 12px; flex-wrap: wrap;
       margin-bottom: 14px;
       padding-bottom: 12px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--slate-100);
     }
     .summary-hero-date {
-      font-size: 20px; font-weight: 800; color: var(--text);
-      letter-spacing: -0.3px;
+      font-size: 20px; font-weight: 700; color: var(--navy-900);
+      letter-spacing: -0.025em;
       font-variant-numeric: tabular-nums;
     }
     .summary-hero-tag {
-      font-size: 11.5px; font-weight: 700;
-      padding: 3px 10px; border-radius: 999px;
-      background: var(--crimson); color: #fff;
-      letter-spacing: 0.4px;
+      font-size: 11.5px; font-weight: 600;
+      padding: 3px 10px; border-radius: 4px;
+      background: var(--navy-900); color: #fff;
+      letter-spacing: 0.3px;
     }
     .summary-hero-rows {
       display: grid; gap: 10px;
@@ -286,58 +313,59 @@
       font-variant-numeric: tabular-nums;
     }
     .summary-row .lbl {
-      font-size: 13px; font-weight: 600; color: var(--text-mid);
-      letter-spacing: -0.2px;
+      font-size: 13px; font-weight: 600; color: var(--slate-500);
+      letter-spacing: -0.01em;
     }
     .summary-row .val {
-      font-size: 28px; font-weight: 800; color: var(--text);
-      letter-spacing: -0.5px;
+      font-size: 28px; font-weight: 700; color: var(--navy-900);
+      letter-spacing: -0.025em;
     }
     .summary-row .val .unit {
-      font-size: 14px; font-weight: 600; margin-left: 3px;
-      color: var(--text-light);
+      font-size: 14px; font-weight: 500; margin-left: 3px;
+      color: var(--slate-500);
     }
     .summary-row.total .val { font-size: 36px; color: var(--crimson); }
     .summary-row .mtd {
-      font-size: 12px; color: var(--text-light);
+      font-size: 12px; color: var(--slate-500);
       white-space: nowrap;
     }
     .summary-row .mtd b {
-      color: var(--text-mid); font-weight: 700;
+      color: var(--slate-700); font-weight: 700;
       font-variant-numeric: tabular-nums;
     }
     .summary-row .rate {
       display: inline-flex; align-items: baseline; gap: 4px;
-      padding: 4px 10px; border-radius: 6px;
-      background: rgba(184,146,42,0.10);
-      border: 1px solid rgba(184,146,42,0.32);
-      font-size: 13px; font-weight: 600;
-      color: var(--gold);
-      letter-spacing: -0.2px; white-space: nowrap;
+      padding: 4px 10px; border-radius: 4px;
+      background: var(--blue-025);
+      border: 1px solid var(--slate-200);
+      font-size: 13px; font-weight: 500;
+      color: var(--navy-700);
+      letter-spacing: -0.01em; white-space: nowrap;
+      font-family: ui-monospace, "SF Mono", monospace;
     }
-    .summary-row .rate b { font-size: 14px; color: var(--gold); }
+    .summary-row .rate b { font-size: 14px; color: var(--navy-900); font-weight: 700; }
     .summary-row .delta {
       display: inline-flex; align-items: baseline; gap: 3px;
       margin-left: 10px;
-      font-size: 14px; font-weight: 700;
-      letter-spacing: -0.2px;
+      font-size: 14px; font-weight: 600;
+      letter-spacing: -0.01em;
       font-variant-numeric: tabular-nums;
       vertical-align: baseline;
     }
     .summary-row.total .delta { font-size: 16px; }
-    .summary-row .delta.pos { color: #B42318; }
-    .summary-row .delta.neg { color: #2A52BE; }
-    .summary-row .delta.flat { color: var(--text-light); }
+    .summary-row .delta.pos { color: var(--crimson); }
+    .summary-row .delta.neg { color: var(--delta-blue); }
+    .summary-row .delta.flat { color: var(--slate-400); }
     .summary-row .delta .arrow { font-size: 0.85em; line-height: 1; }
     .summary-hero-foot {
       margin-top: 12px; padding-top: 10px;
-      border-top: 1px solid var(--border);
-      font-size: 11.5px; color: var(--text-light);
-      letter-spacing: -0.1px;
+      border-top: 1px solid var(--slate-100);
+      font-size: 12px; color: var(--slate-500);
+      letter-spacing: -0.005em;
     }
     .summary-hero-empty {
       text-align: center; padding: 14px 0;
-      font-size: 14px; color: var(--text-mid);
+      font-size: 14px; color: var(--slate-500);
     }
     @media (max-width: 640px) {
       .summary-hero { padding: 18px 18px 16px; }
@@ -348,25 +376,25 @@
       .summary-row.total .val { font-size: 30px; }
     }
 
-    /* KPI — 섹션 타이틀 + T1·T2 각각 */
+    /* KPI — 섹션 타이틀 + T1·T2 각각 (legacy, 본문 미사용 — 색만 정렬 유지) */
     .kpi-section-title {
       display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
       margin: 0 0 12px; padding: 0;
-      letter-spacing: -0.3px;
+      letter-spacing: -0.025em;
     }
     .kpi-section-title::before {
-      content: ''; width: 3px; height: 20px;
-      background: var(--gold); border-radius: 2px;
+      content: ''; width: 4px; height: 20px;
+      background: var(--navy-900); border-radius: 2px;
       align-self: center;
     }
     .kpi-section-date {
-      font-size: 20px; font-weight: 800; color: var(--text);
+      font-size: 20px; font-weight: 700; color: var(--navy-900);
       font-variant-numeric: tabular-nums;
-      letter-spacing: -0.5px;
+      letter-spacing: -0.025em;
     }
     .kpi-section-label {
-      font-size: 13px; font-weight: 600; color: var(--text-light);
-      letter-spacing: 0.3px;
+      font-size: 13px; font-weight: 500; color: var(--slate-500);
+      letter-spacing: 0.2px;
     }
     .kpi-grid {
       display: grid;
@@ -418,62 +446,65 @@
       letter-spacing: -0.2px;
     }
     .kpi-delta.pos { background: rgba(140,0,35,0.10); color: var(--crimson); }
-    .kpi-delta.neg { background: #EEF4FF; color: #2A52BE; }
-    .kpi-delta.flat { background: #F2F4F7; color: var(--text-mid); }
+    .kpi-delta.neg { background: var(--blue-025); color: var(--delta-blue); }
+    .kpi-delta.flat { background: var(--slate-050); color: var(--slate-700); }
     .kpi-baseline {
       margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border);
-      font-size: 12px; color: var(--text-mid);
+      font-size: 12px; color: var(--slate-700);
       display: flex; flex-wrap: wrap; gap: 4px 12px;
     }
-    .kpi-baseline b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .kpi-baseline b { color: var(--navy-900); font-weight: 700; font-variant-numeric: tabular-nums; }
     .kpi-baseline .lbl {
-      font-size: 10px; font-weight: 700; color: var(--text-light);
+      font-size: 10px; font-weight: 700; color: var(--slate-500);
       text-transform: uppercase; letter-spacing: 0.4px; margin-right: 4px;
     }
     .kpi-delta-base {
       font-size: 11px; font-weight: 600; opacity: 0.75; margin-right: 4px;
     }
     .kpi-empty {
-      font-size: 14px; color: var(--text-light); font-weight: 600;
+      font-size: 14px; color: var(--slate-500); font-weight: 600;
       padding: 8px 0;
     }
     .kpi-sub {
       display: flex; gap: 8px; flex-wrap: wrap;
-      margin-top: 12px; font-size: 12px; color: var(--text-mid);
+      margin-top: 12px; font-size: 12px; color: var(--slate-700);
     }
-    .kpi-sub .seg { padding: 3px 9px; border-radius: 6px; background: #F2F4F7; }
+    .kpi-sub .seg { padding: 3px 9px; border-radius: 6px; background: var(--slate-050); }
     .kpi-sub .t1 { background: var(--t1-soft); color: var(--t1); font-weight: 600; }
     .kpi-sub .t2 { background: var(--t2-soft); color: var(--t2); font-weight: 600; }
 
     /* 오늘(D-0) 보조 strip */
     .kpi-today-strip {
       display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
-      background: #F8F8F5; border: 1px solid var(--border); border-radius: 10px;
+      background: var(--slate-050); border: 1px solid var(--slate-100); border-radius: 6px;
       padding: 10px 16px; margin-bottom: 26px;
-      font-size: 12px; color: var(--text-mid);
+      font-size: 12px; color: var(--slate-700);
       font-variant-numeric: tabular-nums;
     }
     .kpi-today-strip .ts-label {
-      font-weight: 700; color: var(--crimson); letter-spacing: 0.4px;
+      font-weight: 700; color: var(--navy-900); letter-spacing: 0.4px;
       text-transform: uppercase; font-size: 11px;
     }
-    .kpi-today-strip .ts-total b { color: var(--text); font-weight: 800; font-size: 14px; }
-    .kpi-today-strip .ts-peak { color: var(--text-mid); }
+    .kpi-today-strip .ts-total b { color: var(--navy-900); font-weight: 800; font-size: 14px; }
+    .kpi-today-strip .ts-peak { color: var(--slate-700); }
     .kpi-today-strip .seg.t1 { padding: 2px 7px; border-radius: 5px; background: var(--t1-soft); color: var(--t1); font-weight: 600; }
     .kpi-today-strip .seg.t2 { padding: 2px 7px; border-radius: 5px; background: var(--t2-soft); color: var(--t2); font-weight: 600; }
 
-    /* 섹션 */
-    section { margin-bottom: 36px; }
+    /* 섹션 헤더 — 항공편수 페이지와 동일 패턴 (4px 좌측 navy bar + 1.3125rem) */
+    section { margin-bottom: 2rem; }
     .section-title {
-      font-size: 15px; font-weight: 700; color: var(--text);
-      margin: 0 0 12px; letter-spacing: -0.2px;
-      display: flex; align-items: center; gap: 8px;
+      border-left: 4px solid var(--navy-900);
+      padding: 6px 0 6px 12px;
+      font-weight: 700; font-size: 1.3125rem;
+      color: var(--navy-900);
+      letter-spacing: -0.02em; line-height: 1.3;
+      margin: 0 0 0.75rem 0;
+      display: block;
     }
-    .section-title::before {
-      content: ''; width: 3px; height: 14px; background: var(--crimson); border-radius: 2px;
-    }
+    .section-title::before { content: none; }
     .section-note {
-      font-size: 12px; color: var(--text-light); margin-top: 8px;
+      color: var(--slate-500); font-size: 13px; line-height: 1.5;
+      margin: 4px 0 8px 2px; letter-spacing: -0.01em;
     }
     .chart-grid {
       display: grid;
@@ -482,13 +513,15 @@
     }
     .chart-card {
       background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
+      border: 1px solid var(--slate-100);
+      border-radius: 8px;
       padding: 14px 14px 10px;
     }
     .chart-card h3 {
-      font-size: 13px; font-weight: 700; color: var(--text-mid);
+      font-size: 13px; font-weight: 700; color: var(--slate-700);
       margin: 0 0 6px; padding: 0 4px;
+      border-left: none;
+      letter-spacing: -0.01em;
     }
     .chart {
       width: 100%;
@@ -497,38 +530,53 @@
     .chart.tall { height: 420px; }
 
     /* 표 */
-    .table-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
-    .table-wrap:focus-visible { outline: 2px solid var(--t1); outline-offset: 2px; }
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      background: var(--card);
+      margin: 4px 0 0 0;
+    }
+    .table-wrap:focus-visible { outline: 2px solid var(--navy-700); outline-offset: 2px; }
     .visually-hidden {
       position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
       overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
     }
     table.daily {
       width: 100%; border-collapse: collapse;
-      font-size: 13px; font-variant-numeric: tabular-nums;
+      font-size: 13.5px; line-height: 1.45;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1, "ss01" 1;
+      color: #0A0F1E; letter-spacing: -0.01em;
+      border-top: 1.5px solid var(--navy-900);
     }
     table.daily th, table.daily td {
-      padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--border);
+      padding: 7px 18px 7px 8px; text-align: right;
+      border-bottom: 1px solid var(--slate-050);
+      font-weight: 500;
     }
     table.daily thead th {
-      background: #F8F8F5; color: var(--text-mid); font-weight: 700;
-      font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px;
-      border-bottom: 2px solid var(--border);
+      background: transparent; color: var(--slate-500); font-weight: 600;
+      font-size: 12px; letter-spacing: 0.01em;
+      padding: 10px 18px 10px 8px; line-height: 1.35;
+      border-bottom: 1px solid var(--slate-200);
+      text-transform: none;
     }
     table.daily td.label, table.daily th.label, table.daily td.dow, table.daily th.dow {
       text-align: left;
     }
-    table.daily td.label { font-weight: 600; }
-    table.daily tr.future-row { background: var(--future-bg); }
-    table.daily tr.tomorrow-row { background: transparent; font-weight: 700; }
+    table.daily td.label { font-weight: 500; color: var(--slate-700); }
+    table.daily tr.future-row td { background: var(--future-bg); color: #78350F; }
+    table.daily tr.future-row td.label { background: var(--future-bg); color: #78350F; font-weight: 600; }
+    table.daily tr.tomorrow-row td { font-weight: 700; }
     table.daily tr.tomorrow-row td:first-child {
-      box-shadow: inset 4px 0 0 var(--t1);
+      box-shadow: inset 4px 0 0 var(--navy-900);
     }
-    table.daily tr.tomorrow-row td.label::after { content: ' (내일)'; font-size: 11px; color: var(--t1); font-weight: 700; }
+    table.daily tr.tomorrow-row td.label::after { content: ' (내일)'; font-size: 11px; color: var(--navy-700); font-weight: 700; }
     table.daily td.red, table.daily th.red { color: var(--red-day); }
     table.daily td.t1 { color: var(--t1); }
     table.daily td.t2 { color: var(--t2); }
-    table.daily td.dash { color: var(--text-light); }
+    table.daily td.dash { color: var(--slate-400); }
+    table.daily th, table.daily td { white-space: nowrap; }
     /* 모바일: 피크 시간/객수 2열을 1열 통합으로 압축 (8열 → 6열) */
     table.daily th.peak-combined, table.daily td.peak-combined { display: none; }
     @media (max-width: 720px) {
@@ -537,64 +585,90 @@
       table.daily th.peak-combined, table.daily td.peak-combined { display: table-cell; }
     }
 
-    /* 푸터 */
+    /* 푸터 — 항공편수 페이지의 footer.footnote 패턴과 동일 (footnote-block + credit) */
     .footnote {
-      margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--border);
-      font-size: 12px; color: var(--text-light); line-height: 1.65;
+      margin-top: 48px;
+      padding-top: 16px;
+      border-top: 1px solid var(--slate-100);
+      font-size: 12px; color: var(--slate-500);
+      line-height: 1.7; letter-spacing: -0.005em;
     }
-    .footnote ul { margin: 6px 0 0 18px; padding: 0; }
-    .footnote li { margin-bottom: 3px; }
+    .footnote .footnote-block + .footnote-block { margin-top: 16px; }
+    .footnote .footnote-title {
+      font-weight: 600; color: var(--slate-700); font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .footnote ul { margin: 0; padding-left: 16px; }
+    .footnote li { margin-bottom: 2px; }
+    .footnote b { color: var(--slate-700); font-weight: 600; }
+    .footnote a {
+      color: var(--slate-500); text-decoration: underline;
+      text-decoration-color: var(--slate-200);
+      word-break: keep-all;
+    }
+    .footnote a:hover { color: var(--navy-900); text-decoration-color: var(--navy-900); }
+    .footnote .credit {
+      margin-top: 20px;
+      padding-top: 14px;
+      border-top: 1px solid var(--slate-100);
+      color: var(--slate-400);
+      font-size: 11px;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
     .src-pill {
       display: inline-block; padding: 1px 7px; border-radius: 10px;
       font-size: 11px; font-weight: 600; line-height: 1.5;
-      background: #EEF4FF; color: var(--t1); margin-left: 4px;
+      background: var(--blue-025); color: var(--navy-700); margin-left: 4px;
     }
     .src-pill.d1 { background: #FFF6E0; color: #8A6A00; }
     .src-pill.web { background: #F1ECF7; color: #6A35A1; }
     .src-pill.live { background: #E8F4EC; color: #1B7A3E; }
-    .src-pill.none { background: #F2F4F7; color: var(--text-light); }
+    .src-pill.none { background: var(--slate-050); color: var(--slate-500); }
 
     /* 출국장 평면도 */
     .map-controls {
       display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
       margin-bottom: 12px;
     }
-    .map-tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .map-tabs { display: inline-flex; border: 1px solid var(--slate-200); border-radius: 6px; overflow: hidden; }
     .map-tab {
       padding: 7px 14px; font-size: 12px; font-weight: 600;
-      background: #fff; color: var(--text-mid); border: none; cursor: pointer;
+      background: #fff; color: var(--slate-700); border: none; cursor: pointer;
       font-family: inherit;
     }
-    .map-tab + .map-tab { border-left: 1px solid var(--border); }
-    .map-tab.active { background: var(--crimson); color: #fff; }
-    .map-hour { font-size: 12px; color: var(--text-mid); display: inline-flex; align-items: center; gap: 8px; }
+    .map-tab + .map-tab { border-left: 1px solid var(--slate-200); }
+    .map-tab.active { background: var(--navy-900); color: #fff; }
+    .map-hour { font-size: 12px; color: var(--slate-700); display: inline-flex; align-items: center; gap: 8px; }
     .map-hour select {
       padding: 6px 10px; font-size: 12px; font-family: inherit;
-      border: 1px solid var(--border); border-radius: 8px; background: #fff;
+      border: 1px solid var(--slate-200); border-radius: 6px; background: #fff;
       color: var(--text); cursor: pointer;
     }
+    .map-hour select:hover { border-color: var(--navy-700); background: #F1F5F9; }
+    .map-hour select:focus { outline: 2px solid var(--navy-700); outline-offset: 1px; }
     .map-stat {
-      margin-left: auto; font-size: 12px; color: var(--text-light);
+      margin-left: auto; font-size: 12px; color: var(--slate-500);
       font-variant-numeric: tabular-nums;
     }
-    .map-stat b { color: var(--text-mid); font-weight: 700; }
+    .map-stat b { color: var(--slate-700); font-weight: 700; }
     .floor-map-card { padding: 14px 14px 10px; }
     .floor-map-card + .floor-map-card { margin-top: 14px; }
     .floor-map-title {
-      font-size: 13px; font-weight: 700; color: var(--text-mid);
+      font-size: 13px; font-weight: 700; color: var(--slate-700);
       margin: 0 0 6px; padding: 0 4px;
     }
     .floor-svg {
       width: 100%; height: auto; display: block;
       font-family: inherit;
-      background: #FBFAF6;
+      background: #F8FAFC;
     }
     .floor-svg image {
       filter: saturate(0.25) brightness(1.18) contrast(0.85);
       opacity: 0.38;
     }
     .floor-svg .dg-rect {
-      stroke: rgba(140,0,35,0.6); stroke-width: 1.5;
+      stroke: rgba(11,46,92,0.55); stroke-width: 1.5;
       transition: fill 240ms ease, stroke-width 120ms ease;
       cursor: pointer;
     }
@@ -612,38 +686,38 @@
       stroke: #C8C8C8;
     }
     .floor-svg .badge-bg {
-      fill: #fff; stroke: #8C0023; stroke-width: 1.4;
+      fill: #fff; stroke: var(--navy-900); stroke-width: 1.4;
     }
     .floor-svg .dg-label {
-      font-size: 13px; font-weight: 800; text-anchor: middle;
-      fill: var(--crimson); pointer-events: none;
-      letter-spacing: 0.2px;
+      font-size: 13px; font-weight: 700; text-anchor: middle;
+      fill: var(--navy-900); pointer-events: none;
+      letter-spacing: 0.1px;
     }
     .floor-svg .dg-pax {
-      font-size: 17px; font-weight: 800; text-anchor: middle;
+      font-size: 17px; font-weight: 700; text-anchor: middle;
       font-variant-numeric: tabular-nums; fill: var(--text);
-      pointer-events: none; letter-spacing: -0.3px;
+      pointer-events: none; letter-spacing: -0.025em;
     }
     .floor-svg .dg-mtd {
-      font-size: 10px; font-weight: 700; text-anchor: middle;
-      font-variant-numeric: tabular-nums; fill: var(--text);
+      font-size: 10px; font-weight: 600; text-anchor: middle;
+      font-variant-numeric: tabular-nums; fill: var(--slate-500);
       pointer-events: none;
     }
     .floor-svg .dg-delta {
-      font-size: 11px; font-weight: 800; text-anchor: middle;
+      font-size: 11px; font-weight: 700; text-anchor: middle;
       font-variant-numeric: tabular-nums; pointer-events: none;
-      letter-spacing: -0.2px;
+      letter-spacing: -0.01em;
     }
     .floor-legend {
       display: flex; align-items: center; gap: 10px;
-      font-size: 11px; color: var(--text-light);
+      font-size: 11px; color: var(--slate-500);
       margin-top: 10px; padding: 0 4px;
       font-variant-numeric: tabular-nums;
     }
     .floor-legend-bar {
       flex: 1; height: 10px; border-radius: 5px;
       background: linear-gradient(to right, rgba(31,111,235,0.10), rgba(31,111,235,0.85));
-      border: 1px solid var(--border);
+      border: 1px solid var(--slate-100);
     }
     .floor-legend-bar.t2 {
       background: linear-gradient(to right, rgba(194,100,32,0.10), rgba(194,100,32,0.85));
@@ -651,13 +725,16 @@
     .floor-legend-key { font-weight: 700; }
     .floor-legend-key.t1 { color: var(--t1); }
     .floor-legend-key.t2 { color: var(--t2); }
-    .floor-legend b { color: var(--text-mid); font-weight: 700; }
+    .floor-legend b { color: var(--slate-700); font-weight: 700; }
 
     @media (max-width: 720px) {
-      .container { padding: 18px 14px 40px; }
-      .topbar h1 { font-size: 18px; }
+      .container { padding: 1.25rem 0.75rem 2rem; }
+      .topbar { gap: 8px; }
+      .topbar h1 { font-size: 1.5rem; }
       .header-actions { width: 100%; }
+      .update-badge { flex-basis: 100%; order: -1; }
       .action-btn { flex: 1 1 0; justify-content: center; white-space: nowrap; padding: 9px 10px; }
+      .summary-hero { padding: 18px 18px 16px; }
       .modal { padding: 20px 18px; }
       .kpi-grid { grid-template-columns: 1fr; }
       .kpi-card.kpi-hero .kpi-main { font-size: 36px; }
@@ -665,7 +742,7 @@
       .chart { height: 280px; }
       .chart.tall { height: 320px; }
       table.daily { font-size: 12px; }
-      table.daily th, table.daily td { padding: 6px 6px; }
+      table.daily th, table.daily td { padding: 6px 8px 6px 4px; }
       .map-controls { gap: 8px; }
       .map-stat { margin-left: 0; width: 100%; }
     }
@@ -678,10 +755,7 @@
   <div class="topbar">
     <h1>인천공항 국제선 예상 승객수</h1>
     <div class="header-actions">
-      <div class="meta" style="margin-right:6px;">
-        데이터 기준 : <b>{{ p.fetched_at }}</b><br>
-        활용 데이터 : <b>{{ p.data_period }}</b>
-      </div>
+      <span class="update-badge">데이터 기준 {{ p.fetched_at }}</span>
       <button id="copy-btn" class="action-btn" type="button" aria-label="대시보드 이미지를 클립보드에 복사">
         <span aria-hidden="true">📋</span> 이미지 복사
       </button>
@@ -690,6 +764,7 @@
       </button>
     </div>
   </div>
+  <div class="period-note">활용 데이터: {{ p.data_period }}</div>
 
   {# 핵심 요약 — 내일 데이터가 있으면 내일, 없으면 오늘을 보여준다 (SMS 알림과 동일 기준) #}
   {% set has_tomorrow = p.reserved.tomorrow.total > 0 %}
@@ -967,29 +1042,39 @@
     </div>
   </section>
 
-  <div class="footnote">
-    <ul>
-      <li>데이터 출처 : <a href="https://www.airport.kr/ap_ko/883/subview.do" target="_blank" rel="noopener">인천국제공항공사 공항 예상 혼잡도</a></li>
-      <li>산출 방식 :
-        <ul style="margin-top:3px;">
-          <li><b>입력 데이터</b> — 항공사 운항 스케줄·예약 정보 + 공항 내 빅데이터 센서로 수집한 여객 흐름</li>
-          <li><b>갱신 주기</b> — 매일 17시에 다음날(D+1) 예측치 갱신, 당일(D-0)은 실측을 일부 반영해 보정</li>
-          <li><b>알고리즘</b> — 인천공항 측이 비공개 (예상값이므로 실제와 차이 가능)</li>
-        </ul>
-      </li>
-      <li>통계 기준 :
-        <ul style="margin-top:3px;">
-          <li><b>핵심 요약 카드</b> — 항공사 예약 기준 (환승객 포함). 매장 매출 잠재 인원 파악용.</li>
-          <li><b>그 외 모든 통계</b> (출국장별·일자별·시간대별·도착지별) — 실제 출국장 통과 인원 (환승객 제외).</li>
-        </ul>
-      </li>
-      <li>T1 5·6번 출국장은 인천공항 측 데이터 정의에 따라 합산값으로 표시됩니다.</li>
-      <li>환율 출처 : 서울외국환중개(주) 전일 고시환율 (모든 국내 면세점 공통 적용).</li>
-    </ul>
-    <p style="text-align:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-light);letter-spacing:0.2px;">
-      Built with Claude Code by 신라면세점 인천공항점 (마케팅)
-    </p>
-  </div>
+  <footer class="footnote">
+    <div class="footnote-block">
+      <div class="footnote-title">데이터 출처</div>
+      <ul>
+        <li>인천국제공항공사 공항 예상 혼잡도
+          (<a href="https://www.airport.kr/ap_ko/883/subview.do" target="_blank" rel="noopener">https://www.airport.kr/ap_ko/883/subview.do</a>)
+        </li>
+      </ul>
+    </div>
+    <div class="footnote-block">
+      <div class="footnote-title">산출 방식</div>
+      <ul>
+        <li><b>입력 데이터</b> — 항공사 운항 스케줄·예약 정보 + 공항 내 빅데이터 센서로 수집한 여객 흐름</li>
+        <li><b>갱신 주기</b> — 매일 17시에 다음날(D+1) 예측치 갱신, 당일(D-0)은 실측을 일부 반영해 보정</li>
+        <li><b>알고리즘</b> — 인천공항 측이 비공개 (예상값이므로 실제와 차이 가능)</li>
+      </ul>
+    </div>
+    <div class="footnote-block">
+      <div class="footnote-title">통계 기준</div>
+      <ul>
+        <li><b>핵심 요약 카드</b> — 항공사 예약 기준 (환승객 포함). 매장 매출 잠재 인원 파악용</li>
+        <li><b>그 외 모든 통계</b> (출국장별·일자별·시간대별·도착지별) — 실제 출국장 통과 인원 (환승객 제외)</li>
+        <li>T1 5·6번 출국장은 인천공항 측 데이터 정의에 따라 합산값으로 표시</li>
+      </ul>
+    </div>
+    <div class="footnote-block">
+      <div class="footnote-title">환율 출처</div>
+      <ul>
+        <li>서울외국환중개(주) 전일 고시환율 (모든 국내 면세점 공통 적용)</li>
+      </ul>
+    </div>
+    <div class="credit">Built with Claude Code by 신라면세점 인천공항점(마케팅)</div>
+  </footer>
 
 </div>
 
@@ -1001,7 +1086,7 @@
     </button>
     <h2 id="exportModalTitle">Raw Data Download</h2>
     <p>선택한 기간의 시간대별 출국장 예상 승객수 원본 데이터를 CSV 파일로 저장합니다. (최대 90일)</p>
-    <div style="background:#FFFBE6;border:1px solid #FCEAA0;border-radius:6px;padding:10px 12px;margin:0 0 16px 0;font-size:12px;line-height:1.6;color:#7A5B00;">
+    <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:10px 12px;margin:0 0 16px 0;font-size:12px;line-height:1.6;color:#78350F;">
       <b>시간대별 출국장 예상 승객수 + 권역별 분포 원본</b>입니다 (airport.kr 공식 엑셀 기반).
     </div>
     <form id="exportForm" onsubmit="doExport(event)">
@@ -1081,13 +1166,14 @@
   var sharedYRange = [0, Math.ceil(hourlyMax * 1.1 / 1000) * 1000];
 
   // 시간대별 T1 — MTD 평균(점선) vs FOCUS(실선) — 카드 focus 일자와 동기화
+  // MTD는 focus 라인과 다른 hue 계열로 구분 (T1: 따뜻한 stone gray vs cool blue)
   Plotly.newPlot('chart-hourly-t1', [
     {
       x: hourTicks(),
       y: P.mtd_hourly.T1,
       type: 'scatter', mode: 'lines',
-      line: { color: '#9AA0A6', width: 1.5, dash: 'dot' },
-      opacity: 0.85,
+      line: { color: '#A8A29E', width: 1.8, dash: '5px,3px' },
+      opacity: 0.95,
       name: 'MTD 평균',
     },
     {
@@ -1109,8 +1195,8 @@
       x: hourTicks(),
       y: P.mtd_hourly.T2,
       type: 'scatter', mode: 'lines',
-      line: { color: '#9AA0A6', width: 1.5, dash: 'dot' },
-      opacity: 0.85,
+      line: { color: '#64748B', width: 1.8, dash: '5px,3px' },
+      opacity: 0.95,
       name: 'MTD 평균',
     },
     {
@@ -1439,17 +1525,18 @@ async function fetchAsDataUrl(url) {
 function buildInlineSvgStyle() {
   // CSS 변수 해소 (data URL로 로드된 SVG는 페이지 CSS·var를 못 읽음)
   const cs = getComputedStyle(document.documentElement);
-  const crimson = cs.getPropertyValue("--crimson").trim() || "#8C0023";
-  const text = cs.getPropertyValue("--text").trim() || "#1A1A1A";
+  const navy = cs.getPropertyValue("--navy-900").trim() || "#0B2E5C";
+  const text = cs.getPropertyValue("--text").trim() || "#111827";
+  const slate = cs.getPropertyValue("--slate-500").trim() || "#64748B";
   return `
     .floor-svg-export image { filter: saturate(0.25) brightness(1.18) contrast(0.85); opacity: 0.38; }
-    .floor-svg-export .dg-rect { stroke: rgba(140,0,35,0.6); stroke-width: 1.5; }
-    .floor-svg-export .badge-bg { fill: #fff; stroke: ${crimson}; stroke-width: 1.4; }
-    .floor-svg-export .dg-label { font-size: 13px; font-weight: 800; text-anchor: middle; fill: ${crimson}; letter-spacing: 0.2px; }
-    .floor-svg-export .dg-pax { font-size: 17px; font-weight: 800; text-anchor: middle; font-variant-numeric: tabular-nums; fill: ${text}; letter-spacing: -0.3px; }
-    .floor-svg-export .dg-mtd { font-size: 10px; font-weight: 700; text-anchor: middle; font-variant-numeric: tabular-nums; fill: ${text}; }
-    .floor-svg-export .dg-delta { font-size: 11px; font-weight: 800; text-anchor: middle; font-variant-numeric: tabular-nums; letter-spacing: -0.2px; }
-    .floor-svg-export text { font-family: 'Outfit', 'Noto Sans KR', -apple-system, sans-serif; }
+    .floor-svg-export .dg-rect { stroke: rgba(11,46,92,0.55); stroke-width: 1.5; }
+    .floor-svg-export .badge-bg { fill: #fff; stroke: ${navy}; stroke-width: 1.4; }
+    .floor-svg-export .dg-label { font-size: 13px; font-weight: 700; text-anchor: middle; fill: ${navy}; letter-spacing: 0.1px; }
+    .floor-svg-export .dg-pax { font-size: 17px; font-weight: 700; text-anchor: middle; font-variant-numeric: tabular-nums; fill: ${text}; letter-spacing: -0.025em; }
+    .floor-svg-export .dg-mtd { font-size: 10px; font-weight: 600; text-anchor: middle; font-variant-numeric: tabular-nums; fill: ${slate}; }
+    .floor-svg-export .dg-delta { font-size: 11px; font-weight: 700; text-anchor: middle; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+    .floor-svg-export text { font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Noto Sans KR", sans-serif; }
   `;
 }
 
@@ -1522,7 +1609,7 @@ async function rasterizeFloorSvg(svg) {
         const { dataUrl, width, height } = await rasterizeFloorSvg(svg);
         const img = document.createElement("img");
         img.src = dataUrl;
-        img.style.cssText = `width:${width}px;height:${height}px;display:block;background:#FBFAF6;`;
+        img.style.cssText = `width:${width}px;height:${height}px;display:block;background:#F8FAFC;`;
         img.dataset.exportSwap = "1";
         const prevDisplay = svg.style.display;
         svg.style.display = "none";
