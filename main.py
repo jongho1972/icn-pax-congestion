@@ -105,10 +105,47 @@ def _kst_today() -> date:
     return datetime.now(KST).date()
 
 
+def _resolved_today(ym: str | None) -> tuple[date, bool]:
+    """ym 쿼리(YYYYMM)이 유효한 과거 월을 가리키면 그 달 말일과 archive=True 반환.
+
+    이번 달이거나 미래 월·잘못된 입력은 KST 오늘로 폴백 (archive=False).
+    """
+    today_kst = _kst_today()
+    if not ym:
+        return today_kst, False
+    try:
+        y, m = int(ym[:4]), int(ym[4:6])
+        first = date(y, m, 1)
+    except (ValueError, IndexError):
+        return today_kst, False
+    if first < DATA_START_DATE.replace(day=1):
+        return today_kst, False
+    if first.year == today_kst.year and first.month == today_kst.month:
+        return today_kst, False
+    if first > today_kst.replace(day=1):
+        return today_kst, False
+    next_month_first = (first.replace(day=28) + timedelta(days=4)).replace(day=1)
+    last_day = next_month_first - timedelta(days=1)
+    return last_day, True
+
+
+def _available_months() -> list[str]:
+    """Daily_Data 보유 월(YYYYMM) — DATA_START_DATE 이후 + 이번 달 포함, 정렬."""
+    avail = list_available_dates(str(DAILY_DIR))
+    cutoff = DATA_START_DATE.strftime("%Y%m%d")
+    months = sorted({d[:6] for d in avail if d >= cutoff})
+    cur = _kst_today().strftime("%Y%m")
+    if cur not in months:
+        months.append(cur)
+        months.sort()
+    return months
+
+
 # ---------- 페이로드 빌드 ----------
-def build_payload() -> dict:
-    today = _kst_today()
-    cache_key = today.strftime("%Y%m%d")
+def build_payload(today: date | None = None, archive: bool = False) -> dict:
+    if today is None:
+        today = _kst_today()
+    cache_key = today.strftime("%Y%m%d") + ("_a" if archive else "")
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached
@@ -116,15 +153,16 @@ def build_payload() -> dict:
         cached = _cache_get(cache_key)
         if cached is not None:
             return cached
-        return _build_payload_locked(today)
+        return _build_payload_locked(today, archive)
 
 
-def _build_payload_locked(today: date) -> dict:
-    cache_key = today.strftime("%Y%m%d")
+def _build_payload_locked(today: date, archive: bool = False) -> dict:
+    cache_key = today.strftime("%Y%m%d") + ("_a" if archive else "")
     tomorrow = today + timedelta(days=1)
-    # 일자별 표 + MTD 평균 윈도우 모두 "당월 1일 ~ D+1" 범위로 통일
+    # archive 모드: 그달 1일~말일만. live 모드: 당월 1일~D+1
     range_start = max(today.replace(day=1), DATA_START_DATE)
-    daily_map = load_range(str(DAILY_DIR), range_start, tomorrow)
+    range_end = today if archive else tomorrow
+    daily_map = load_range(str(DAILY_DIR), range_start, range_end)
 
     # 전월(1일~말일) 데이터 — D-1까지 누적 일수 부족 시 baseline 폴백
     first = today.replace(day=1)
@@ -140,7 +178,11 @@ def _build_payload_locked(today: date) -> dict:
     tomorrow_ymd = tomorrow.strftime("%Y%m%d")
 
     today_data, today_src = daily_map.get(today_ymd, (None, "none"))
-    tomorrow_data, tomorrow_src = daily_map.get(tomorrow_ymd, (None, "none"))
+    if archive:
+        # archive 모드: tomorrow는 다음달 1일 → 카드 focus를 today로 강제
+        tomorrow_data, tomorrow_src = None, "none"
+    else:
+        tomorrow_data, tomorrow_src = daily_map.get(tomorrow_ymd, (None, "none"))
 
     # KPI
     kpi = kpi_summary(today_data, tomorrow_data)
@@ -269,7 +311,8 @@ def _build_payload_locked(today: date) -> dict:
         },
         # 화면 전체 기준 일자 — 핵심 요약 카드와 다른 모든 통계가 같은 일자를 보도록
         "focus_is_tomorrow": focus_is_tomorrow,
-        "focus_label": "내일 예상" if focus_is_tomorrow else "오늘 예상",
+        "focus_label": ("내일 예상" if focus_is_tomorrow
+                        else ("월말 기준" if archive else "오늘 예상")),
         # 면세점 고시환율 (USD/KRW)
         "exchange": exchange,
         "today": {
@@ -312,6 +355,11 @@ def _build_payload_locked(today: date) -> dict:
         "table_rows": table_rows,
         "fetched_at": fetched_at.strftime("%Y-%m-%d %H:%M"),
         "data_period": data_period,
+        # 월 선택 메타
+        "is_archive": archive,
+        "selected_ym": today.strftime("%Y%m"),
+        "current_ym": _kst_today().strftime("%Y%m"),
+        "available_months": _available_months(),
     }
 
     _cache_set(cache_key, payload)
@@ -330,8 +378,9 @@ def warm_cache_on_startup() -> None:
 
 # ---------- 라우트 ----------
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    payload = await run_in_threadpool(build_payload)
+async def index(request: Request, ym: str | None = None):
+    target_today, archive = _resolved_today(ym)
+    payload = await run_in_threadpool(build_payload, target_today, archive)
 
     today = _kst_today()
     tomorrow = today + timedelta(days=1)

@@ -196,6 +196,20 @@
     .action-btn:disabled { background: var(--slate-400); cursor: wait; }
     .action-btn.secondary { background: var(--navy-700); }
     .action-btn.secondary:hover { background: var(--navy-900); }
+    /* 월 선택 셀렉트 */
+    .ym-select-label { display: inline-flex; align-items: center; }
+    .ym-select-label select {
+      appearance: none; -webkit-appearance: none;
+      padding: 6px 28px 6px 10px; border-radius: 6px;
+      font-size: 13px; font-weight: 600; font-family: inherit;
+      color: var(--navy-900); background: #fff;
+      border: 1px solid var(--slate-200);
+      cursor: pointer; letter-spacing: -0.01em;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%23475569' stroke-width='1.6'><path d='M1 1.5l5 5 5-5'/></svg>");
+      background-repeat: no-repeat; background-position: right 8px center; background-size: 10px 7px;
+    }
+    .ym-select-label select:hover { border-color: var(--navy-700); }
+    .ym-select-label select:focus { outline: 2px solid var(--blue-050); outline-offset: 2px; }
     /* 캡처 중 우측 액션 영역 숨김 */
     body.capturing .header-actions,
     body.capturing .update-badge { visibility: hidden; }
@@ -755,6 +769,16 @@
   <div class="topbar">
     <h1>인천공항 국제선 예상 승객수</h1>
     <div class="header-actions">
+      <label class="ym-select-label" for="ym-select">
+        <span class="visually-hidden">조회 월 선택</span>
+        <select id="ym-select" onchange="onYmChange(this.value)" aria-label="조회 월 선택">
+        {% for m in p.available_months %}
+          <option value="{{ m }}" {% if m == p.selected_ym %}selected{% endif %}>
+            {{ m[:4] }}-{{ m[4:] }}{% if m == p.current_ym %} (이번 달){% endif %}
+          </option>
+        {% endfor %}
+        </select>
+      </label>
       <span class="update-badge">데이터 기준 {{ p.fetched_at }}</span>
       <button id="copy-btn" class="action-btn" type="button" aria-label="대시보드 이미지를 클립보드에 복사">
         <span aria-hidden="true">📋</span> 이미지 복사
@@ -770,7 +794,7 @@
   {% set has_tomorrow = p.reserved.tomorrow.total > 0 %}
   {% set focus = p.reserved.tomorrow if has_tomorrow else p.reserved.today %}
   {% set focus_meta = p.tomorrow if has_tomorrow else p.today %}
-  {% set focus_tag = '내일 예상' if has_tomorrow else '오늘 예상' %}
+  {% set focus_tag = p.focus_label %}
   {% set focus_rate = p.exchange.tomorrow if has_tomorrow else p.exchange.today %}
   {% set focus_delta = p.reserved.delta.tomorrow if has_tomorrow else p.reserved.delta.today %}
   {% set baseline_label = p.reserved.mtd.label %}
@@ -1755,6 +1779,13 @@ function _focusableInModal() {
   return Array.from(m.querySelectorAll(
     'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
   ));
+}
+function onYmChange(value) {
+  if (!value) return;
+  // 이번 달 선택은 쿼리 없이 깔끔하게, 과거 월은 ?ym=YYYYMM
+  var current = {{ p.current_ym | tojson }};
+  var url = window.location.pathname + (value === current ? '' : '?ym=' + encodeURIComponent(value));
+  window.location.href = url;
 }
 function openExportModal() {
   _exportModalReturnFocus = document.activeElement;
