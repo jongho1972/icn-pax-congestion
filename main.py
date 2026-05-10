@@ -289,17 +289,8 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
 
     fetched_at = datetime.now(KST)
 
-    avail = [d for d in list_available_dates(str(DAILY_DIR))
-             if d >= DATA_START_DATE.strftime("%Y%m%d")]
-    if avail:
-        try:
-            d_min = datetime.strptime(avail[0], "%Y%m%d").date()
-            d_max = datetime.strptime(avail[-1], "%Y%m%d").date()
-            data_period = f"{d_min.month}/{d_min.day} ~ {d_max.month}/{d_max.day}"
-        except ValueError:
-            data_period = "—"
-    else:
-        data_period = "—"
+    # 기간 표기 = 당월 1일 ~ focus 일자 (실제 콘텐츠에 활용된 범위)
+    data_period = f"{range_start.month}/{range_start.day} ~ {focus_date.month}/{focus_date.day}"
 
     payload = {
         # SMS 알림 동일 기준 핵심 요약 (예약합계 출국 = 환승객 포함)
