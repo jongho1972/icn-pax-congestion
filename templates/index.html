@@ -812,7 +812,7 @@
         </div>
       </div>
       <div class="summary-hero-foot">
-        <span class="foot-note">※ 항공사 예약 기준 (환승객 포함)</span>
+        <span class="foot-note">※ 항공사 예약 기준 (환승객 포함){% if baseline_available %} · ▲▼는 <b>{{ baseline_label }}</b> 대비{% endif %}</span>
         {% if focus_rate %}<span class="rate">환율 $1 = ₩<b>{{ "{:,.1f}".format(focus_rate) }}</b></span>{% endif %}
       </div>
     {% else %}
