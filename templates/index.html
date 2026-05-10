@@ -774,12 +774,12 @@
         <select id="ym-select" onchange="onYmChange(this.value)" aria-label="조회 월 선택">
         {% for m in p.available_months %}
           <option value="{{ m }}" {% if m == p.selected_ym %}selected{% endif %}>
-            {{ m[:4] }}-{{ m[4:] }}{% if m == p.current_ym %} (이번 달){% endif %}
+            {{ m[:4] }}년 {{ m[4:]|int }}월{% if m == p.current_ym %} (이번달){% endif %}
           </option>
         {% endfor %}
         </select>
       </label>
-      <span class="update-badge">데이터 기준 {{ p.fetched_at }}</span>
+      <span class="update-badge">데이터 기준 {{ p.fetched_at }} KST</span>
       <button id="copy-btn" class="action-btn" type="button" aria-label="대시보드 이미지를 클립보드에 복사">
         <span aria-hidden="true">📋</span> 이미지 복사
       </button>
@@ -788,7 +788,7 @@
       </button>
     </div>
   </div>
-  <div class="period-note">활용 데이터: {{ p.data_period }}</div>
+  <div class="period-note">기간 : {{ p.data_period }}</div>
 
   {# 핵심 요약 — 내일 데이터가 있으면 내일, 없으면 오늘을 보여준다 (SMS 알림과 동일 기준) #}
   {% set has_tomorrow = p.reserved.tomorrow.total > 0 %}
