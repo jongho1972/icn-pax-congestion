@@ -115,7 +115,6 @@ def send(image_path: Path, recipients: list[str], date_str: str, kpi_text: str) 
     html = f"""<!doctype html>
 <html><body style="font-family:'Noto Sans KR','Helvetica Neue',Arial,sans-serif;color:#222;background:#f7f7fa;padding:20px;margin:0;">
   <div style="max-width:960px;margin:0 auto;background:#fff;padding:28px;border-radius:8px;border:1px solid #e5e5ea;">
-    <p style="margin:0 0 12px 0;font-size:14px;color:#444;">[WEB발신]</p>
     <p style="margin:0 0 12px 0;font-size:14px;color:#444;">안녕하세요,</p>
     <p style="margin:0 0 20px 0;font-size:14px;color:#444;"><strong>인천공항 국제선 예상 승객수</strong>를 공유드립니다.</p>
     <div style="margin:0 0 20px 0;font-size:14px;color:#444;line-height:1.7;white-space:pre-line;">{kpi_text}</div>
