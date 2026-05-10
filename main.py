@@ -128,6 +128,16 @@ def _build_payload_locked(today: date) -> dict:
         range_start = DATA_START_DATE
     daily_map = load_range(str(DAILY_DIR), range_start, tomorrow)
 
+    # 전월(1일~말일) 데이터 — D-1까지 누적 일수 부족 시 baseline 폴백
+    first = today.replace(day=1)
+    prev_last = first - timedelta(days=1)
+    prev_first = prev_last.replace(day=1)
+    if prev_last < DATA_START_DATE:
+        prev_month_map: dict = {}
+    else:
+        prev_first_clamped = max(prev_first, DATA_START_DATE)
+        prev_month_map = load_range(str(DAILY_DIR), prev_first_clamped, prev_last)
+
     today_ymd = today.strftime("%Y%m%d")
     tomorrow_ymd = tomorrow.strftime("%Y%m%d")
 
@@ -139,9 +149,11 @@ def _build_payload_locked(today: date) -> dict:
 
     # 핵심 요약 (SMS 동일 기준 — 예약합계 출국)
     reserved = reserved_summary(today_data, tomorrow_data)
-    reserved_mtd = mtd_reserved(daily_map, today)
+    reserved_mtd = mtd_reserved(daily_map, today, prev_month_map)
 
     def _delta_pct(focus_v: int, mtd_v: int):
+        if not reserved_mtd.get("available"):
+            return None
         if not focus_v or not mtd_v or mtd_v <= 0:
             return None
         return round((focus_v - mtd_v) / mtd_v * 100, 1)
@@ -168,19 +180,20 @@ def _build_payload_locked(today: date) -> dict:
     }
 
     # MTD
-    mtd = mtd_summary(daily_map, today)
-    gate_mtd = mtd_per_gate(daily_map, today)
+    mtd = mtd_summary(daily_map, today, prev_month_map)
+    gate_mtd = mtd_per_gate(daily_map, today, prev_month_map)
     delta_pct_T1 = None
     delta_pct_T2 = None
-    if mtd["T1"] > 0 and kpi["tomorrow"]["T1"] > 0:
-        delta_pct_T1 = round((kpi["tomorrow"]["T1"] - mtd["T1"]) / mtd["T1"] * 100, 1)
-    if mtd["T2"] > 0 and kpi["tomorrow"]["T2"] > 0:
-        delta_pct_T2 = round((kpi["tomorrow"]["T2"] - mtd["T2"]) / mtd["T2"] * 100, 1)
+    if mtd.get("available"):
+        if mtd["T1"] > 0 and kpi["tomorrow"]["T1"] > 0:
+            delta_pct_T1 = round((kpi["tomorrow"]["T1"] - mtd["T1"]) / mtd["T1"] * 100, 1)
+        if mtd["T2"] > 0 and kpi["tomorrow"]["T2"] > 0:
+            delta_pct_T2 = round((kpi["tomorrow"]["T2"] - mtd["T2"]) / mtd["T2"] * 100, 1)
 
     # 시간대별 차트
     today_hourly = hourly_t1_t2(today_data)
     tomorrow_hourly = hourly_t1_t2(tomorrow_data)
-    mtd_hourly = mtd_hourly_t1_t2(daily_map, today)
+    mtd_hourly = mtd_hourly_t1_t2(daily_map, today, prev_month_map)
 
     # 출국장별 시간대 (7개 zone)
     today_per_gate = hourly_per_gate(today_data)
@@ -195,8 +208,8 @@ def _build_payload_locked(today: date) -> dict:
     today_route_summary_T2 = route_summary(today_data, "T2")
     tomorrow_route_summary_T1 = route_summary(tomorrow_data, "T1")
     tomorrow_route_summary_T2 = route_summary(tomorrow_data, "T2")
-    mtd_route_T1 = mtd_route(daily_map, today, "T1")
-    mtd_route_T2 = mtd_route(daily_map, today, "T2")
+    mtd_route_T1 = mtd_route(daily_map, today, "T1", prev_month_map)
+    mtd_route_T2 = mtd_route(daily_map, today, "T2", prev_month_map)
 
     # 일자별 추이
     daily_df = daily_totals(daily_map)

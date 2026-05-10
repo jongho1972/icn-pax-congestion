@@ -50,8 +50,13 @@ def build_kpi_block() -> tuple[str, str]:
     first = today.replace(day=1)
     daily_map = load_range(str(DAILY_DIR), first, tomorrow)
 
+    # 전월(1일~말일) 데이터 — D-1 누적 일수 부족 시 baseline 폴백 (대시보드와 동일)
+    prev_last = first - timedelta(days=1)
+    prev_first = prev_last.replace(day=1)
+    prev_month_map = load_range(str(DAILY_DIR), prev_first, prev_last)
+
     reserved = reserved_summary(today_data, tomorrow_data)
-    mtd = mtd_reserved(daily_map, today)
+    mtd = mtd_reserved(daily_map, today, prev_month_map)
     rates = load_rates(DAILY_DIR)
 
     focus_is_tomorrow = bool(reserved["tomorrow"]["total"] > 0)
@@ -66,16 +71,20 @@ def build_kpi_block() -> tuple[str, str]:
     def fmt_n(n: int) -> str:
         return f"{n:,}명" if n else "명"
 
-    anchor = mtd["anchor_label"]
-    text = (
-        f"{focus_date.month}/{focus_date.day}일({weekday_kr})\n"
-        f"전체 출국객수: {fmt_n(focus_kpi['total'])}\n"
-        f"T1 출국객수: {fmt_n(focus_kpi['T1'])}\n"
-        f"({anchor} MTD 평균 {fmt_n(mtd['T1'])})\n"
-        f"T2 출국객수: {fmt_n(focus_kpi['T2'])}\n"
-        f"({anchor} MTD 평균 {fmt_n(mtd['T2'])})\n"
-        f"환율 $1=₩{rate_str}"
-    )
+    label = mtd.get("label") or "—"
+    available = bool(mtd.get("available"))
+    lines = [
+        f"{focus_date.month}/{focus_date.day}일({weekday_kr})",
+        f"전체 출국객수: {fmt_n(focus_kpi['total'])}",
+        f"T1 출국객수: {fmt_n(focus_kpi['T1'])}",
+    ]
+    if available:
+        lines.append(f"({label} {fmt_n(mtd['T1'])})")
+    lines.append(f"T2 출국객수: {fmt_n(focus_kpi['T2'])}")
+    if available:
+        lines.append(f"({label} {fmt_n(mtd['T2'])})")
+    lines.append(f"환율 $1=₩{rate_str}")
+    text = "\n".join(lines)
     return text, focus_date.strftime("%Y-%m-%d")
 
 

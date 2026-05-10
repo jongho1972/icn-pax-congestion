@@ -7,7 +7,7 @@ T2 출국장 키: "1","2"
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Iterable, Optional
 
 import pandas as pd
@@ -153,39 +153,91 @@ def daily_totals(daily_map: dict[str, tuple[Optional[dict], str]]) -> pd.DataFra
     return pd.DataFrame(rows)
 
 
-# ---------- MTD ----------
-def _iter_month_to_date(daily_map, today: date):
-    """이번 달 1일 ~ 오늘까지 유효 data만 yield."""
+# ---------- Baseline (D-1 기준 MTD + 전월 폴백) ----------
+MIN_MTD_DAYS = 3  # 이번 달 D-1까지 누적 일수가 이 값 미만이면 전월 평균으로 폴백
+
+
+def _resolve_baseline(daily_map, today: date, prev_month_map=None):
+    """비교 기준선(baseline)을 반환.
+
+    1순위: 이번 달 1일 ~ D-1 누적 일수가 MIN_MTD_DAYS 이상 → "MTD 평균(~D-1)"
+    2순위: 전월 1일 ~ 말일 데이터가 1개 이상 → "전월 평균"
+    그 외: 비교 기준선 없음 ("—")
+
+    Returns: (entries, kind, label, anchor)
+        entries: list[tuple[date, dict]]
+        kind:    "mtd_d_minus_1" | "prev_month" | "none"
+        label:   사용자 노출용 라벨 (값과 함께 표기)
+        anchor:  보조 라벨 (label에 이미 anchor가 포함되므로 외부 표기 거의 불필요)
+    """
     first = today.replace(day=1)
-    for ymd, (data, src) in daily_map.items():
+    yesterday = today - timedelta(days=1)
+
+    d_minus_1: list[tuple[date, dict]] = []
+    for ymd, (data, src) in (daily_map or {}).items():
         try:
             d = datetime.strptime(ymd, "%Y%m%d").date()
         except ValueError:
             continue
-        if d < first or d > today:
+        if d < first or d > yesterday:
             continue
         if not data or src == "none":
             continue
-        yield d, data
+        d_minus_1.append((d, data))
+
+    if len(d_minus_1) >= MIN_MTD_DAYS:
+        return (
+            d_minus_1,
+            "mtd_d_minus_1",
+            f"MTD 평균(~{yesterday.month}/{yesterday.day})",
+            f"~{yesterday.month}/{yesterday.day}",
+        )
+
+    prev: list[tuple[date, dict]] = []
+    for ymd, (data, src) in (prev_month_map or {}).items():
+        if not data or src == "none":
+            continue
+        try:
+            d = datetime.strptime(ymd, "%Y%m%d").date()
+        except ValueError:
+            continue
+        prev.append((d, data))
+
+    if prev:
+        prev_first = min(d for d, _ in prev)
+        return (
+            prev,
+            "prev_month",
+            f"전월({prev_first.month}월) 평균",
+            f"{prev_first.month}월",
+        )
+
+    return ([], "none", "—", "—")
 
 
-def mtd_summary(daily_map, today: date) -> dict:
-    """이번 달 1일 ~ 오늘까지의 일평균 T1·T2 (출국장 통과 기준)."""
-    first = today.replace(day=1)
-    t1s, t2s = [], []
-    for _, data in _iter_month_to_date(daily_map, today):
-        t1s.append(_terminal_total(data, "T1"))
-        t2s.append(_terminal_total(data, "T2"))
-    n = len(t1s)
+def _baseline_meta(kind: str, label: str, anchor: str, days: int) -> dict:
+    return {
+        "kind": kind,
+        "label": label,
+        "anchor": anchor,
+        "days": days,
+        "available": kind != "none" and days > 0,
+    }
+
+
+# ---------- MTD ----------
+def mtd_summary(daily_map, today: date, prev_month_map=None) -> dict:
+    """비교 기준선의 일평균 T1·T2 (출국장 통과 기준)."""
+    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map)
+    n = len(entries)
+    meta = _baseline_meta(kind, label, anchor, n)
     if n == 0:
-        return {"days": 0, "T1": 0, "T2": 0, "total": 0, "period_label": "—"}
+        return {"T1": 0, "T2": 0, "total": 0, **meta}
+    t1s = [_terminal_total(d, "T1") for _, d in entries]
+    t2s = [_terminal_total(d, "T2") for _, d in entries]
     t1_avg = round(sum(t1s) / n)
     t2_avg = round(sum(t2s) / n)
-    return {
-        "days": n, "T1": t1_avg, "T2": t2_avg,
-        "total": t1_avg + t2_avg,
-        "period_label": f"{first.month}/{first.day} ~ {today.month}/{today.day}",
-    }
+    return {"T1": t1_avg, "T2": t2_avg, "total": t1_avg + t2_avg, **meta}
 
 
 def reserved_summary(today_data: Optional[dict], tomorrow_data: Optional[dict]) -> dict:
@@ -197,61 +249,56 @@ def reserved_summary(today_data: Optional[dict], tomorrow_data: Optional[dict]) 
     return {"today": one(today_data), "tomorrow": one(tomorrow_data)}
 
 
-def mtd_reserved(daily_map, today: date) -> dict:
-    """이번 달 1일 ~ 오늘까지 예약승객 출국 일평균 (SMS 동일 기준)."""
-    first = today.replace(day=1)
-    t1s, t2s = [], []
-    for _, data in _iter_month_to_date(daily_map, today):
-        t1s.append(_reserved_out(data, "T1"))
-        t2s.append(_reserved_out(data, "T2"))
-    n = len(t1s)
+def mtd_reserved(daily_map, today: date, prev_month_map=None) -> dict:
+    """비교 기준선의 예약승객 출국 일평균 (SMS 동일 기준)."""
+    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map)
+    n = len(entries)
+    meta = _baseline_meta(kind, label, anchor, n)
     if n == 0:
-        return {"days": 0, "T1": 0, "T2": 0, "total": 0,
-                "period_label": "—", "anchor_label": "—"}
+        return {"T1": 0, "T2": 0, "total": 0, **meta}
+    t1s = [_reserved_out(d, "T1") for _, d in entries]
+    t2s = [_reserved_out(d, "T2") for _, d in entries]
     t1_avg = round(sum(t1s) / n)
     t2_avg = round(sum(t2s) / n)
-    # SMS 패턴: "(5/X MTD 평균 XX명)" — 마지막 누적 일자(=오늘)를 anchor로 표기
-    return {
-        "days": n, "T1": t1_avg, "T2": t2_avg,
-        "total": t1_avg + t2_avg,
-        "period_label": f"{first.month}/{first.day} ~ {today.month}/{today.day}",
-        "anchor_label": f"{today.month}/{today.day}",
-    }
+    return {"T1": t1_avg, "T2": t2_avg, "total": t1_avg + t2_avg, **meta}
 
 
-def mtd_per_gate(daily_map, today: date) -> dict[str, int]:
-    """이번 달 1일 ~ 오늘까지 7개 zone 일평균."""
+def mtd_per_gate(daily_map, today: date, prev_month_map=None) -> dict:
+    """비교 기준선의 7개 zone 일평균. baseline 메타 포함."""
+    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map)
+    n = len(entries)
+    meta = _baseline_meta(kind, label, anchor, n)
+    if n == 0:
+        return {"values": {z: 0 for z in ALL_ZONE_KEYS}, **meta}
     sums = {z: 0 for z in ALL_ZONE_KEYS}
-    n = 0
-    for _, data in _iter_month_to_date(daily_map, today):
-        n += 1
+    for _, data in entries:
         per = hourly_per_gate(data)
         for z in ALL_ZONE_KEYS:
             sums[z] += sum(per[z])
+    values = {z: round(sums[z] / n) for z in ALL_ZONE_KEYS}
+    return {"values": values, **meta}
+
+
+def mtd_hourly_t1_t2(daily_map, today: date, prev_month_map=None) -> dict:
+    """비교 기준선의 시간대별 평균 (T1·T2)."""
+    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map)
+    n = len(entries)
+    meta = _baseline_meta(kind, label, anchor, n)
     if n == 0:
-        return {z: 0 for z in ALL_ZONE_KEYS}
-    return {z: round(sums[z] / n) for z in ALL_ZONE_KEYS}
-
-
-def mtd_hourly_t1_t2(daily_map, today: date) -> dict:
-    """이번 달 1일 ~ 오늘까지 시간대별 평균 (T1·T2)."""
+        return {"hours": HOUR_LABELS, "T1": [0] * 24, "T2": [0] * 24, **meta}
     sums_t1 = [0] * 24
     sums_t2 = [0] * 24
-    n = 0
-    for _, data in _iter_month_to_date(daily_map, today):
+    for _, data in entries:
         t1 = _hourly_terminal(data, "T1")
         t2 = _hourly_terminal(data, "T2")
         for i in range(24):
             sums_t1[i] += t1[i]
             sums_t2[i] += t2[i]
-        n += 1
-    if n == 0:
-        return {"hours": HOUR_LABELS, "T1": [0] * 24, "T2": [0] * 24, "days": 0}
     return {
         "hours": HOUR_LABELS,
         "T1": [round(sums_t1[i] / n) for i in range(24)],
         "T2": [round(sums_t2[i] / n) for i in range(24)],
-        "days": n,
+        **meta,
     }
 
 
@@ -288,23 +335,24 @@ def route_summary(data: Optional[dict], terminal: str) -> dict:
     }
 
 
-def mtd_route(daily_map, today: date, terminal: str) -> dict:
-    """이번 달 1일 ~ 오늘까지 권역별 일평균 + 비율."""
-    sums = {r: 0 for r in REGIONS}
-    n = 0
-    for _, data in _iter_month_to_date(daily_map, today):
-        src = (data.get(terminal) or {}).get("depart_route", {}).get("권역합계") or {}
-        for r in REGIONS:
-            sums[r] += int(src.get(r) or 0)
-        n += 1
+def mtd_route(daily_map, today: date, terminal: str, prev_month_map=None) -> dict:
+    """비교 기준선의 권역별 일평균 + 비율."""
+    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map)
+    n = len(entries)
+    meta = _baseline_meta(kind, label, anchor, n)
     if n == 0:
-        zeros = {r: 0 for r in REGIONS}
         return {
             "regions": REGIONS,
             "values": [0] * len(REGIONS),
             "ratios": [0.0] * len(REGIONS),
-            "total": 0, "days": 0,
+            "total": 0,
+            **meta,
         }
+    sums = {r: 0 for r in REGIONS}
+    for _, data in entries:
+        src = (data.get(terminal) or {}).get("depart_route", {}).get("권역합계") or {}
+        for r in REGIONS:
+            sums[r] += int(src.get(r) or 0)
     avgs = {r: round(sums[r] / n) for r in REGIONS}
     grand = sum(avgs.values())
     return {
@@ -312,7 +360,7 @@ def mtd_route(daily_map, today: date, terminal: str) -> dict:
         "values": [avgs[r] for r in REGIONS],
         "ratios": [round((avgs[r] / grand * 100) if grand > 0 else 0.0, 1) for r in REGIONS],
         "total": grand,
-        "days": n,
+        **meta,
     }
 
 

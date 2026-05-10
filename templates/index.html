@@ -776,11 +776,13 @@
   {% set focus_tag = '내일 예상' if has_tomorrow else '오늘 예상' %}
   {% set focus_rate = p.exchange.tomorrow if has_tomorrow else p.exchange.today %}
   {% set focus_delta = p.reserved.delta.tomorrow if has_tomorrow else p.reserved.delta.today %}
-  {% macro delta_chip(pct, anchor) -%}
+  {% set baseline_label = p.reserved.mtd.label %}
+  {% set baseline_available = p.reserved.mtd.available %}
+  {% macro delta_chip(pct, label) -%}
     {%- if pct is not none -%}
       {%- set dcls = 'pos' if pct > 0.05 else ('neg' if pct < -0.05 else 'flat') -%}
       {%- set darr = '▲' if pct > 0.05 else ('▼' if pct < -0.05 else '―') -%}
-      <span class="delta {{ dcls }}" title="{{ anchor }} MTD 평균 대비"><span class="arrow">{{ darr }}</span> {{ '{:.1f}'.format(pct|abs) }}%</span>
+      <span class="delta {{ dcls }}" title="{{ label }} 대비"><span class="arrow">{{ darr }}</span> {{ '{:.1f}'.format(pct|abs) }}%</span>
     {%- endif -%}
   {%- endmacro %}
   <div class="summary-hero" role="region" aria-label="핵심 요약">
@@ -792,23 +794,23 @@
       <div class="summary-hero-rows">
         <div class="summary-row total">
           <span class="lbl">전체 승객수</span>
-          <span class="val">{{ "{:,}".format(focus.total) }}<span class="unit">명</span>{{ delta_chip(focus_delta.total, p.reserved.mtd.anchor_label) }}</span>
+          <span class="val">{{ "{:,}".format(focus.total) }}<span class="unit">명</span>{{ delta_chip(focus_delta.total, baseline_label) }}</span>
           <span class="mtd">
-            {% if p.reserved.mtd.total > 0 %}({{ p.reserved.mtd.anchor_label }} MTD 평균 <b>{{ "{:,}".format(p.reserved.mtd.total) }}</b>명){% endif %}
+            {% if baseline_available and p.reserved.mtd.total > 0 %}({{ baseline_label }} <b>{{ "{:,}".format(p.reserved.mtd.total) }}</b>명){% endif %}
           </span>
         </div>
         <div class="summary-row">
           <span class="lbl">T1 승객수</span>
-          <span class="val">{{ "{:,}".format(focus.T1) }}<span class="unit">명</span>{{ delta_chip(focus_delta.T1, p.reserved.mtd.anchor_label) }}</span>
+          <span class="val">{{ "{:,}".format(focus.T1) }}<span class="unit">명</span>{{ delta_chip(focus_delta.T1, baseline_label) }}</span>
           <span class="mtd">
-            {% if p.reserved.mtd.T1 > 0 %}({{ p.reserved.mtd.anchor_label }} MTD 평균 <b>{{ "{:,}".format(p.reserved.mtd.T1) }}</b>명){% endif %}
+            {% if baseline_available and p.reserved.mtd.T1 > 0 %}({{ baseline_label }} <b>{{ "{:,}".format(p.reserved.mtd.T1) }}</b>명){% endif %}
           </span>
         </div>
         <div class="summary-row">
           <span class="lbl">T2 승객수</span>
-          <span class="val">{{ "{:,}".format(focus.T2) }}<span class="unit">명</span>{{ delta_chip(focus_delta.T2, p.reserved.mtd.anchor_label) }}</span>
+          <span class="val">{{ "{:,}".format(focus.T2) }}<span class="unit">명</span>{{ delta_chip(focus_delta.T2, baseline_label) }}</span>
           <span class="mtd">
-            {% if p.reserved.mtd.T2 > 0 %}({{ p.reserved.mtd.anchor_label }} MTD 평균 <b>{{ "{:,}".format(p.reserved.mtd.T2) }}</b>명){% endif %}
+            {% if baseline_available and p.reserved.mtd.T2 > 0 %}({{ baseline_label }} <b>{{ "{:,}".format(p.reserved.mtd.T2) }}</b>명){% endif %}
           </span>
         </div>
       </div>
@@ -970,7 +972,7 @@
     </div>
 
     <p class="section-note">
-      각 출국장의 {{ '내일' if has_tomorrow else '오늘' }} 예상 승객수와 이번 달 평균. 색상이 진할수록 붐빔.
+      각 출국장의 {{ '내일' if has_tomorrow else '오늘' }} 예상 승객수{% if baseline_available %}와 {{ baseline_label }}{% endif %}. 색상이 진할수록 붐빔.
       시간대 셀렉터로 오전·오후·저녁·심야 그룹별 분포도 확인 가능합니다.
     </p>
   </section>
@@ -1068,6 +1070,7 @@
       <ul>
         <li><b>핵심 요약 카드</b> — 항공사 예약 기준 (환승객 포함). 매장 매출 잠재 인원 파악용</li>
         <li><b>그 외 모든 통계</b> (출국장별·일자별·시간대별·도착지별) — 실제 출국장 통과 인원 (환승객 제외)</li>
+        <li><b>비교 기준선</b> — 이번 달 1일~전일까지 누적 일수가 3일 이상이면 <b>MTD 평균(전일까지)</b>, 그 외에는 <b>전월 평균</b>으로 폴백. 두 기준 모두 부재 시 비교 표기를 생략합니다.</li>
         <li>T1 5·6번 출국장은 인천공항 측 데이터 정의에 따라 합산값으로 표시</li>
       </ul>
     </div>
@@ -1161,60 +1164,55 @@
   }
 
   // T1·T2 차트 y축 동일 범위 — 시각 비교 용이
+  var BASELINE_AVAILABLE = !!(P.mtd_hourly && P.mtd_hourly.available);
+  var BASELINE_LABEL = (P.mtd_hourly && P.mtd_hourly.label) || 'MTD 평균';
   var hourlyMax = 0;
   ['T1','T2'].forEach(function(k) {
-    [FOCUS_HOURLY[k], P.mtd_hourly[k]].forEach(function(arr) {
+    var arrays = [FOCUS_HOURLY[k]];
+    if (BASELINE_AVAILABLE) arrays.push(P.mtd_hourly[k]);
+    arrays.forEach(function(arr) {
       (arr||[]).forEach(function(v) { if (v > hourlyMax) hourlyMax = v; });
     });
   });
   var sharedYRange = [0, Math.ceil(hourlyMax * 1.1 / 1000) * 1000];
 
-  // 시간대별 T1 — MTD 평균(점선) vs FOCUS(실선) — 카드 focus 일자와 동기화
-  // MTD는 focus 라인과 다른 hue 계열로 구분 (T1: 따뜻한 stone gray vs cool blue)
-  Plotly.newPlot('chart-hourly-t1', [
-    {
+  // baseline trace (MTD 평균(전일까지) 또는 전월 평균) — kind=='none'이면 미표시
+  function _hourlyTraces(termKey, focusColor, baselineColor) {
+    var traces = [];
+    if (BASELINE_AVAILABLE) {
+      traces.push({
+        x: hourTicks(),
+        y: P.mtd_hourly[termKey],
+        type: 'scatter', mode: 'lines',
+        line: { color: baselineColor, width: 1.8, dash: '5px,3px' },
+        opacity: 0.95,
+        name: BASELINE_LABEL,
+      });
+    }
+    traces.push({
       x: hourTicks(),
-      y: P.mtd_hourly.T1,
-      type: 'scatter', mode: 'lines',
-      line: { color: '#A8A29E', width: 1.8, dash: '5px,3px' },
-      opacity: 0.95,
-      name: 'MTD 평균',
-    },
-    {
-      x: hourTicks(),
-      y: FOCUS_HOURLY.T1,
+      y: FOCUS_HOURLY[termKey],
       type: 'scatter', mode: 'lines+markers',
-      line: { color: '#1F6FEB', width: 2.5 },
+      line: { color: focusColor, width: 2.5 },
       marker: { size: 5 },
       name: FOCUS_LABEL,
-    },
-  ], Object.assign({}, COMMON_LAYOUT, {
-    yaxis: { title: { text: '객수(명)', standoff: 8 }, range: sharedYRange, gridcolor: '#EAECF0' },
-    xaxis: { tickfont: { size: 9 }, tickangle: -45 },
-  }), CONFIG);
+    });
+    return traces;
+  }
 
-  // 시간대별 T2 — MTD 평균(점선) vs FOCUS(실선)
-  Plotly.newPlot('chart-hourly-t2', [
-    {
-      x: hourTicks(),
-      y: P.mtd_hourly.T2,
-      type: 'scatter', mode: 'lines',
-      line: { color: '#64748B', width: 1.8, dash: '5px,3px' },
-      opacity: 0.95,
-      name: 'MTD 평균',
-    },
-    {
-      x: hourTicks(),
-      y: FOCUS_HOURLY.T2,
-      type: 'scatter', mode: 'lines+markers',
-      line: { color: '#C26420', width: 2.5 },
-      marker: { size: 5 },
-      name: FOCUS_LABEL,
-    },
-  ], Object.assign({}, COMMON_LAYOUT, {
-    yaxis: { title: { text: '객수(명)', standoff: 8 }, range: sharedYRange, gridcolor: '#EAECF0' },
-    xaxis: { tickfont: { size: 9 }, tickangle: -45 },
-  }), CONFIG);
+  // 시간대별 T1 — baseline(점선) vs FOCUS(실선) — 카드 focus 일자와 동기화
+  Plotly.newPlot('chart-hourly-t1', _hourlyTraces('T1', '#1F6FEB', '#A8A29E'),
+    Object.assign({}, COMMON_LAYOUT, {
+      yaxis: { title: { text: '객수(명)', standoff: 8 }, range: sharedYRange, gridcolor: '#EAECF0' },
+      xaxis: { tickfont: { size: 9 }, tickangle: -45 },
+    }), CONFIG);
+
+  // 시간대별 T2 — baseline(점선) vs FOCUS(실선)
+  Plotly.newPlot('chart-hourly-t2', _hourlyTraces('T2', '#C26420', '#64748B'),
+    Object.assign({}, COMMON_LAYOUT, {
+      yaxis: { title: { text: '객수(명)', standoff: 8 }, range: sharedYRange, gridcolor: '#EAECF0' },
+      xaxis: { tickfont: { size: 9 }, tickangle: -45 },
+    }), CONFIG);
 
   // ===== 노선별 (권역) 차트 =====
   // 권역 7개 + 색상 팔레트 (차별성 우선)
@@ -1231,25 +1229,29 @@
   function drawRouteSummary(elId, summary, mtd, baseColor, yRange) {
     if (!summary || !summary.regions) return;
     var regions = summary.regions;
-    var mtdValues = (mtd && mtd.values) || regions.map(function() { return 0; });
-    Plotly.newPlot(elId, [
-      {
+    var mtdAvailable = !!(mtd && mtd.available);
+    var mtdLabel = (mtd && mtd.label) || 'MTD 평균';
+    var traces = [];
+    if (mtdAvailable) {
+      var mtdValues = mtd.values || regions.map(function() { return 0; });
+      traces.push({
         x: regions, y: mtdValues,
-        type: 'bar', name: 'MTD 평균',
+        type: 'bar', name: mtdLabel,
         marker: { color: '#D0D5DD' },
         text: mtdValues.map(function(v) { return v > 0 ? v.toLocaleString() : ''; }),
         textposition: 'outside', textfont: { size: 10, color: '#6B7280' },
-        hovertemplate: '%{x}<br>MTD: %{y:,}명<extra></extra>',
-      },
-      {
-        x: regions, y: summary.values,
-        type: 'bar', name: FOCUS_LABEL,
-        marker: { color: baseColor },
-        text: summary.values.map(function(v) { return v > 0 ? v.toLocaleString() : ''; }),
-        textposition: 'outside', textfont: { size: 10 },
-        hovertemplate: '%{x}<br>' + FOCUS_LABEL + ': %{y:,}명<extra></extra>',
-      },
-    ], Object.assign({}, COMMON_LAYOUT, {
+        hovertemplate: '%{x}<br>' + mtdLabel + ': %{y:,}명<extra></extra>',
+      });
+    }
+    traces.push({
+      x: regions, y: summary.values,
+      type: 'bar', name: FOCUS_LABEL,
+      marker: { color: baseColor },
+      text: summary.values.map(function(v) { return v > 0 ? v.toLocaleString() : ''; }),
+      textposition: 'outside', textfont: { size: 10 },
+      hovertemplate: '%{x}<br>' + FOCUS_LABEL + ': %{y:,}명<extra></extra>',
+    });
+    Plotly.newPlot(elId, traces, Object.assign({}, COMMON_LAYOUT, {
       barmode: 'group', bargap: 0.25, bargroupgap: 0.08,
       yaxis: { title: { text: '객수(명)', standoff: 8 }, gridcolor: '#EAECF0', range: yRange },
       xaxis: { tickfont: { size: 11 } },
@@ -1282,10 +1284,12 @@
     }), CONFIG);
   }
 
-  // T1·T2 공통 y축 범위 (FOCUS + MTD 모든 권역 값에서 최댓값 기준)
+  // T1·T2 공통 y축 범위 (FOCUS + baseline 모든 권역 값에서 최댓값 기준)
   var routeMaxAll = 0;
-  [FOCUS_ROUTE_T1, FOCUS_ROUTE_T2,
-   P.mtd_route_T1, P.mtd_route_T2].forEach(function(s) {
+  var _routeSources = [FOCUS_ROUTE_T1, FOCUS_ROUTE_T2];
+  if (P.mtd_route_T1 && P.mtd_route_T1.available) _routeSources.push(P.mtd_route_T1);
+  if (P.mtd_route_T2 && P.mtd_route_T2.available) _routeSources.push(P.mtd_route_T2);
+  _routeSources.forEach(function(s) {
     var arr = (s && s.values) || [];
     arr.forEach(function(v) { if (v > routeMaxAll) routeMaxAll = v; });
   });
@@ -1341,7 +1345,8 @@
   function paintMap(period) {
     var perGate = FOCUS_PER_GATE || {};   // 카드 focus 일자에 동기화
     var todayPerGate = P.today_per_gate || {};  // 시간대 그룹 비율 계산용 (그대로)
-    var gateMtd = P.gate_mtd || {};
+    var gateMtd = (P.gate_mtd && P.gate_mtd.values) || {};
+    var gateMtdAvailable = !!(P.gate_mtd && P.gate_mtd.available);
     var hours = PERIOD_HOURS[period] || null;  // null = 전체
 
     var values = {}, mtdValues = {};
@@ -1357,8 +1362,8 @@
       var arr = perGate[dataKey] || [];
       var v = _sumHours(arr, hours);
       values[k] = v;
-      // MTD: 전체면 일평균 그대로, 시간대 그룹이면 오늘의 동일 그룹 비율로 스케일
-      var mtdDay = gateMtd[dataKey] || 0;
+      // baseline 부재 시 MTD 표기 자체 생략
+      var mtdDay = gateMtdAvailable ? (gateMtd[dataKey] || 0) : 0;
       var mtdH = mtdDay;
       if (hours && mtdDay > 0) {
         var todayArr = todayPerGate[dataKey] || [];
