@@ -157,40 +157,44 @@ def daily_totals(daily_map: dict[str, tuple[Optional[dict], str]]) -> pd.DataFra
 MIN_MTD_DAYS = 3  # 이번 달 D-1까지 누적 일수가 이 값 미만이면 전월 평균으로 폴백
 
 
-def _resolve_baseline(daily_map, today: date, prev_month_map=None):
+def _resolve_baseline(daily_map, today: date, prev_month_map=None, anchor_end: date | None = None):
     """비교 기준선(baseline)을 반환.
 
-    1순위: 이번 달 1일 ~ D-1 누적 일수가 MIN_MTD_DAYS 이상 → "MTD 평균(~D-1)"
+    1순위: 이번 달 1일 ~ anchor_end 누적 일수가 MIN_MTD_DAYS 이상 → "MTD 평균(~M/D)"
     2순위: 전월 1일 ~ 말일 데이터가 1개 이상 → "전월 평균"
     그 외: 비교 기준선 없음 ("—")
+
+    anchor_end: 평균 윈도우 끝점(포함). 보통 focus_date - 1day.
+                None이면 today - 1day (focus=오늘 가정).
 
     Returns: (entries, kind, label, anchor)
         entries: list[tuple[date, dict]]
         kind:    "mtd_d_minus_1" | "prev_month" | "none"
         label:   사용자 노출용 라벨 (값과 함께 표기)
-        anchor:  보조 라벨 (label에 이미 anchor가 포함되므로 외부 표기 거의 불필요)
+        anchor:  보조 라벨
     """
     first = today.replace(day=1)
-    yesterday = today - timedelta(days=1)
+    if anchor_end is None:
+        anchor_end = today - timedelta(days=1)
 
-    d_minus_1: list[tuple[date, dict]] = []
+    in_window: list[tuple[date, dict]] = []
     for ymd, (data, src) in (daily_map or {}).items():
         try:
             d = datetime.strptime(ymd, "%Y%m%d").date()
         except ValueError:
             continue
-        if d < first or d > yesterday:
+        if d < first or d > anchor_end:
             continue
         if not data or src == "none":
             continue
-        d_minus_1.append((d, data))
+        in_window.append((d, data))
 
-    if len(d_minus_1) >= MIN_MTD_DAYS:
+    if len(in_window) >= MIN_MTD_DAYS:
         return (
-            d_minus_1,
+            in_window,
             "mtd_d_minus_1",
-            f"MTD 평균(~{yesterday.month}/{yesterday.day})",
-            f"~{yesterday.month}/{yesterday.day}",
+            f"{anchor_end.month}/{anchor_end.day} MTD 평균",
+            f"{anchor_end.month}/{anchor_end.day}",
         )
 
     prev: list[tuple[date, dict]] = []
@@ -208,7 +212,7 @@ def _resolve_baseline(daily_map, today: date, prev_month_map=None):
         return (
             prev,
             "prev_month",
-            f"전월({prev_first.month}월) 평균",
+            f"{prev_first.month}월 평균",
             f"{prev_first.month}월",
         )
 
@@ -226,9 +230,9 @@ def _baseline_meta(kind: str, label: str, anchor: str, days: int) -> dict:
 
 
 # ---------- MTD ----------
-def mtd_summary(daily_map, today: date, prev_month_map=None) -> dict:
+def mtd_summary(daily_map, today: date, prev_month_map=None, anchor_end: date | None = None) -> dict:
     """비교 기준선의 일평균 T1·T2 (출국장 통과 기준)."""
-    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map)
+    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map, anchor_end)
     n = len(entries)
     meta = _baseline_meta(kind, label, anchor, n)
     if n == 0:
@@ -249,9 +253,9 @@ def reserved_summary(today_data: Optional[dict], tomorrow_data: Optional[dict]) 
     return {"today": one(today_data), "tomorrow": one(tomorrow_data)}
 
 
-def mtd_reserved(daily_map, today: date, prev_month_map=None) -> dict:
+def mtd_reserved(daily_map, today: date, prev_month_map=None, anchor_end: date | None = None) -> dict:
     """비교 기준선의 예약승객 출국 일평균 (SMS 동일 기준)."""
-    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map)
+    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map, anchor_end)
     n = len(entries)
     meta = _baseline_meta(kind, label, anchor, n)
     if n == 0:
@@ -263,9 +267,9 @@ def mtd_reserved(daily_map, today: date, prev_month_map=None) -> dict:
     return {"T1": t1_avg, "T2": t2_avg, "total": t1_avg + t2_avg, **meta}
 
 
-def mtd_per_gate(daily_map, today: date, prev_month_map=None) -> dict:
+def mtd_per_gate(daily_map, today: date, prev_month_map=None, anchor_end: date | None = None) -> dict:
     """비교 기준선의 7개 zone 일평균. baseline 메타 포함."""
-    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map)
+    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map, anchor_end)
     n = len(entries)
     meta = _baseline_meta(kind, label, anchor, n)
     if n == 0:
@@ -279,9 +283,9 @@ def mtd_per_gate(daily_map, today: date, prev_month_map=None) -> dict:
     return {"values": values, **meta}
 
 
-def mtd_hourly_t1_t2(daily_map, today: date, prev_month_map=None) -> dict:
+def mtd_hourly_t1_t2(daily_map, today: date, prev_month_map=None, anchor_end: date | None = None) -> dict:
     """비교 기준선의 시간대별 평균 (T1·T2)."""
-    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map)
+    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map, anchor_end)
     n = len(entries)
     meta = _baseline_meta(kind, label, anchor, n)
     if n == 0:
@@ -335,9 +339,9 @@ def route_summary(data: Optional[dict], terminal: str) -> dict:
     }
 
 
-def mtd_route(daily_map, today: date, terminal: str, prev_month_map=None) -> dict:
+def mtd_route(daily_map, today: date, terminal: str, prev_month_map=None, anchor_end: date | None = None) -> dict:
     """비교 기준선의 권역별 일평균 + 비율."""
-    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map)
+    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map, anchor_end)
     n = len(entries)
     meta = _baseline_meta(kind, label, anchor, n)
     if n == 0:

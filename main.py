@@ -149,7 +149,11 @@ def _build_payload_locked(today: date) -> dict:
 
     # 핵심 요약 (SMS 동일 기준 — 예약합계 출국)
     reserved = reserved_summary(today_data, tomorrow_data)
-    reserved_mtd = mtd_reserved(daily_map, today, prev_month_map)
+    # baseline 윈도우 끝점 = focus 일자 직전 (focus=내일이면 ~today, focus=오늘이면 ~D-1)
+    focus_is_tomorrow = bool(reserved["tomorrow"]["total"] > 0)
+    focus_date = tomorrow if focus_is_tomorrow else today
+    anchor_end = focus_date - timedelta(days=1)
+    reserved_mtd = mtd_reserved(daily_map, today, prev_month_map, anchor_end)
 
     def _delta_pct(focus_v: int, mtd_v: int):
         if not reserved_mtd.get("available"):
@@ -180,8 +184,8 @@ def _build_payload_locked(today: date) -> dict:
     }
 
     # MTD
-    mtd = mtd_summary(daily_map, today, prev_month_map)
-    gate_mtd = mtd_per_gate(daily_map, today, prev_month_map)
+    mtd = mtd_summary(daily_map, today, prev_month_map, anchor_end)
+    gate_mtd = mtd_per_gate(daily_map, today, prev_month_map, anchor_end)
     delta_pct_T1 = None
     delta_pct_T2 = None
     if mtd.get("available"):
@@ -193,7 +197,7 @@ def _build_payload_locked(today: date) -> dict:
     # 시간대별 차트
     today_hourly = hourly_t1_t2(today_data)
     tomorrow_hourly = hourly_t1_t2(tomorrow_data)
-    mtd_hourly = mtd_hourly_t1_t2(daily_map, today, prev_month_map)
+    mtd_hourly = mtd_hourly_t1_t2(daily_map, today, prev_month_map, anchor_end)
 
     # 출국장별 시간대 (7개 zone)
     today_per_gate = hourly_per_gate(today_data)
@@ -208,8 +212,8 @@ def _build_payload_locked(today: date) -> dict:
     today_route_summary_T2 = route_summary(today_data, "T2")
     tomorrow_route_summary_T1 = route_summary(tomorrow_data, "T1")
     tomorrow_route_summary_T2 = route_summary(tomorrow_data, "T2")
-    mtd_route_T1 = mtd_route(daily_map, today, "T1", prev_month_map)
-    mtd_route_T2 = mtd_route(daily_map, today, "T2", prev_month_map)
+    mtd_route_T1 = mtd_route(daily_map, today, "T1", prev_month_map, anchor_end)
+    mtd_route_T2 = mtd_route(daily_map, today, "T2", prev_month_map, anchor_end)
 
     # 일자별 추이
     daily_df = daily_totals(daily_map)
@@ -266,8 +270,8 @@ def _build_payload_locked(today: date) -> dict:
             "delta": reserved_delta,
         },
         # 화면 전체 기준 일자 — 핵심 요약 카드와 다른 모든 통계가 같은 일자를 보도록
-        "focus_is_tomorrow": bool(reserved["tomorrow"]["total"] > 0),
-        "focus_label": "내일 예상" if reserved["tomorrow"]["total"] > 0 else "오늘 예상",
+        "focus_is_tomorrow": focus_is_tomorrow,
+        "focus_label": "내일 예상" if focus_is_tomorrow else "오늘 예상",
         # 면세점 고시환율 (USD/KRW)
         "exchange": exchange,
         "today": {

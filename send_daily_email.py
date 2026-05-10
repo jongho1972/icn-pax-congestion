@@ -56,11 +56,13 @@ def build_kpi_block() -> tuple[str, str]:
     prev_month_map = load_range(str(DAILY_DIR), prev_first, prev_last)
 
     reserved = reserved_summary(today_data, tomorrow_data)
-    mtd = mtd_reserved(daily_map, today, prev_month_map)
     rates = load_rates(DAILY_DIR)
 
     focus_is_tomorrow = bool(reserved["tomorrow"]["total"] > 0)
     focus_date = tomorrow if focus_is_tomorrow else today
+    # baseline 윈도우 끝점 = focus 일자 직전 (대시보드와 동일 기준)
+    anchor_end = focus_date - timedelta(days=1)
+    mtd = mtd_reserved(daily_map, today, prev_month_map, anchor_end)
     focus_ymd = tomorrow_ymd if focus_is_tomorrow else today_ymd
     focus_kpi = reserved["tomorrow"] if focus_is_tomorrow else reserved["today"]
 
