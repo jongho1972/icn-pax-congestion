@@ -44,7 +44,6 @@ KST = ZoneInfo("Asia/Seoul")
 BASE = Path(__file__).resolve().parent
 DAILY_DIR = BASE / "Daily_Data"
 
-DAILY_TREND_DAYS = 30  # 일자별 차트 표시 일수 (D-29 ~ D+1)
 DATA_START_DATE = date(2026, 1, 1)  # 엑셀 데이터 첫 일자 (2026-01-01부터 backfill 보유)
 
 app = FastAPI(title="인천공항 국제선 예상 승객수")
@@ -123,9 +122,8 @@ def build_payload() -> dict:
 def _build_payload_locked(today: date) -> dict:
     cache_key = today.strftime("%Y%m%d")
     tomorrow = today + timedelta(days=1)
-    range_start = today - timedelta(days=DAILY_TREND_DAYS - 2)
-    if range_start < DATA_START_DATE:
-        range_start = DATA_START_DATE
+    # 일자별 표 + MTD 평균 윈도우 모두 "당월 1일 ~ D+1" 범위로 통일
+    range_start = max(today.replace(day=1), DATA_START_DATE)
     daily_map = load_range(str(DAILY_DIR), range_start, tomorrow)
 
     # 전월(1일~말일) 데이터 — D-1까지 누적 일수 부족 시 baseline 폴백
