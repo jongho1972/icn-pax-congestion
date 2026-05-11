@@ -111,7 +111,8 @@ uvicorn main:app --reload --port 8000
 - **GitHub Actions** `.github/workflows/daily-mailer.yml`
   - 스케줄: **17:30 KST**
   - Playwright headless chromium → 비번 입력 → `body.capturing` + 1.5배 zoom → `.container` PNG 캡처 → SMTP 발송
-  - 수신자: `mailing_list.txt` 우선, 없으면 `MAIL_RECIPIENTS` 환경변수 폴백
+  - 수신자: `mailing_list.txt` 우선(커밋됨, 41명, 항공편수 메일러와 동기화), 없으면 `MAIL_RECIPIENTS` 환경변수 폴백. 두 출처 모두 동일 리스트 유지
+  - `workflow_dispatch` 입력 `test_recipient` 지원 — 입력 시 `Override mailing list (test only)` 스텝이 `mailing_list.txt`를 덮어써 해당 1명에게만 발송
   - 실패 시 `jongho1972@gmail.com` 자동 통지
 
 ## 신라 사이트 연동
