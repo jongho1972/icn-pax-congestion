@@ -32,6 +32,10 @@ jobs:
           pip install python-dotenv playwright pandas requests xlrd holidays
           playwright install --with-deps chromium
 
+      - name: Override mailing list (test only)
+        if: inputs.test_recipient != ''
+        run: echo "${{ inputs.test_recipient }}" > mailing_list.txt
+
       - name: Capture dashboard
         env:
           DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
