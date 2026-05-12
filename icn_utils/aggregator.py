@@ -368,6 +368,187 @@ def mtd_route(daily_map, today: date, terminal: str, prev_month_map=None, anchor
     }
 
 
+# ---------- 일자별 차트 / 월누적 / 동일일수 비교 (항공편수 대시보드와 동일 패턴) ----------
+def _iter_month(daily_map, year: int, month: int, day_max: int):
+    """주어진 daily_map에서 (year, month) 1~day_max 범위의 (date, data) 만 반환."""
+    for ymd, (data, src) in (daily_map or {}).items():
+        try:
+            d = datetime.strptime(ymd, "%Y%m%d").date()
+        except ValueError:
+            continue
+        if d.year != year or d.month != month or d.day < 1 or d.day > day_max:
+            continue
+        if not data or src == "none":
+            continue
+        yield d, data
+
+
+def daily_series_by_month(daily_map, year: int, month: int, chart_last_day: int) -> dict:
+    """월간 일자별 T1·T2 시리즈 (1~chart_last_day, 데이터 없는 날=null).
+
+    이번달 차트는 데이터가 있는 일자까지만 그리고, 그 이후는 null로 둔다.
+    전월 차트는 말일까지 데이터가 채워진 상태.
+    """
+    by_day: dict[int, tuple[int, int]] = {}
+    for d, data in _iter_month(daily_map, year, month, day_max=31):
+        by_day[d.day] = (_terminal_total(data, "T1"), _terminal_total(data, "T2"))
+    t1 = [None] * chart_last_day
+    t2 = [None] * chart_last_day
+    for day, (a, b) in by_day.items():
+        if 1 <= day <= chart_last_day:
+            t1[day - 1] = a
+            t2[day - 1] = b
+    max_day = max(by_day.keys()) if by_day else 0
+    return {"T1": t1, "T2": t2, "max_day": max_day}
+
+
+def monthly_compare(daily_map_curr, daily_map_prev,
+                    year_c: int, month_c: int, year_p: int, month_p: int,
+                    cutoff_curr: int, cutoff_prev: int) -> dict:
+    """이번달/전월 동일일수 월누적 비교 (출국장 통과 기준)."""
+    def sum_term(daily_map, year, month, cutoff):
+        t1, t2, n = 0, 0, 0
+        for _, data in _iter_month(daily_map, year, month, cutoff):
+            t1 += _terminal_total(data, "T1")
+            t2 += _terminal_total(data, "T2")
+            n += 1
+        return t1, t2, n
+    t1c, t2c, dc = sum_term(daily_map_curr, year_c, month_c, cutoff_curr)
+    t1p, t2p, dp = sum_term(daily_map_prev, year_p, month_p, cutoff_prev)
+    return {
+        "T1_curr": t1c, "T2_curr": t2c, "days_curr": dc,
+        "T1_prev": t1p, "T2_prev": t2p, "days_prev": dp,
+    }
+
+
+def gate_compare(daily_map_curr, daily_map_prev,
+                 year_c: int, month_c: int, year_p: int, month_p: int,
+                 cutoff_curr: int, cutoff_prev: int) -> dict:
+    """출국장별 동일일수 합계 비교 (24시간 × zone 매트릭스 누계 포함).
+
+    UI에서 시간대 셀렉터로 오전/오후/저녁/심야를 골라 합산할 수 있도록
+    'curr_hourly' / 'prev_hourly' 도 함께 노출한다 (sum across days, per hour).
+    """
+    def sum_per_gate(daily_map, year, month, cutoff):
+        sums = {z: 0 for z in ALL_ZONE_KEYS}
+        hourly = {z: [0] * 24 for z in ALL_ZONE_KEYS}
+        n = 0
+        for _, data in _iter_month(daily_map, year, month, cutoff):
+            per = hourly_per_gate(data)
+            for z in ALL_ZONE_KEYS:
+                arr = per[z]
+                for h in range(24):
+                    hourly[z][h] += arr[h]
+                sums[z] += sum(arr)
+            n += 1
+        return sums, hourly, n
+    curr_sums, curr_hourly, n_c = sum_per_gate(daily_map_curr, year_c, month_c, cutoff_curr)
+    prev_sums, prev_hourly, n_p = sum_per_gate(daily_map_prev, year_p, month_p, cutoff_prev)
+    return {
+        "curr": curr_sums, "prev": prev_sums,
+        "curr_hourly": curr_hourly, "prev_hourly": prev_hourly,
+        "days_curr": n_c, "days_prev": n_p,
+    }
+
+
+def prev_dow_reserved_avg(daily_map_prev, year_p: int, month_p: int) -> dict:
+    """전월 요일별 예약합계 출국 평균 (환승객 포함, SMS·KPI 카드 동일 기준).
+
+    Returns: {"T1": {wd: avg}, "T2": {wd: avg}, "total": {wd: avg}}
+    """
+    bk_t1: dict[int, list[int]] = {}
+    bk_t2: dict[int, list[int]] = {}
+    for d, data in _iter_month(daily_map_prev, year_p, month_p, day_max=31):
+        wd = d.weekday()
+        bk_t1.setdefault(wd, []).append(_reserved_out(data, "T1"))
+        bk_t2.setdefault(wd, []).append(_reserved_out(data, "T2"))
+
+    def _avg(buckets):
+        return {wd: round(sum(v) / len(v)) for wd, v in buckets.items() if v}
+
+    avg_t1 = _avg(bk_t1)
+    avg_t2 = _avg(bk_t2)
+    avg_total = {}
+    for wd in set(avg_t1) | set(avg_t2):
+        avg_total[wd] = avg_t1.get(wd, 0) + avg_t2.get(wd, 0)
+    return {"T1": avg_t1, "T2": avg_t2, "total": avg_total}
+
+
+def prev_dow_hourly_avg(daily_map_prev, year_p: int, month_p: int, weekday: int) -> dict:
+    """전월 특정 요일의 시간대별 T1·T2 평균 (출국장 통과 기준).
+
+    weekday: 0(월)~6(일)
+    Returns: {"hours": HOUR_LABELS, "T1": [24], "T2": [24], "available": bool, "n": int}
+    """
+    sums_t1 = [0] * 24
+    sums_t2 = [0] * 24
+    n = 0
+    for d, data in _iter_month(daily_map_prev, year_p, month_p, day_max=31):
+        if d.weekday() != weekday:
+            continue
+        t1 = _hourly_terminal(data, "T1")
+        t2 = _hourly_terminal(data, "T2")
+        for i in range(24):
+            sums_t1[i] += t1[i]
+            sums_t2[i] += t2[i]
+        n += 1
+    if n == 0:
+        return {"hours": HOUR_LABELS, "T1": [0] * 24, "T2": [0] * 24, "available": False, "n": 0}
+    return {
+        "hours": HOUR_LABELS,
+        "T1": [round(sums_t1[i] / n) for i in range(24)],
+        "T2": [round(sums_t2[i] / n) for i in range(24)],
+        "available": True,
+        "n": n,
+    }
+
+
+def prev_dow_avg(daily_map_prev, year_p: int, month_p: int) -> dict:
+    """전월 요일별 T1/T2/합계 평균 (출국장 통과 기준).
+
+    Returns: {"T1": {wd: avg}, "T2": {wd: avg}, "total": {wd: avg}} — wd ∈ 0..6 (월~일)
+    """
+    buckets_t1: dict[int, list[int]] = {}
+    buckets_t2: dict[int, list[int]] = {}
+    for d, data in _iter_month(daily_map_prev, year_p, month_p, day_max=31):
+        wd = d.weekday()
+        buckets_t1.setdefault(wd, []).append(_terminal_total(data, "T1"))
+        buckets_t2.setdefault(wd, []).append(_terminal_total(data, "T2"))
+
+    def _avg(buckets):
+        return {wd: (sum(v) / len(v)) for wd, v in buckets.items() if v}
+
+    avg_t1 = _avg(buckets_t1)
+    avg_t2 = _avg(buckets_t2)
+    avg_total = {}
+    for wd in set(avg_t1) | set(avg_t2):
+        avg_total[wd] = avg_t1.get(wd, 0) + avg_t2.get(wd, 0)
+    return {"T1": avg_t1, "T2": avg_t2, "total": avg_total}
+
+
+def route_compare(daily_map_curr, daily_map_prev, terminal: str,
+                  year_c: int, month_c: int, year_p: int, month_p: int,
+                  cutoff_curr: int, cutoff_prev: int) -> dict:
+    """권역별 동일일수 합계 비교 (해당 터미널)."""
+    def sum_route(daily_map, year, month, cutoff):
+        sums = {r: 0 for r in REGIONS}
+        n = 0
+        for _, data in _iter_month(daily_map, year, month, cutoff):
+            src = (data.get(terminal) or {}).get("depart_route", {}).get("권역합계") or {}
+            for r in REGIONS:
+                sums[r] += int(src.get(r) or 0)
+            n += 1
+        return sums, n
+    curr_sums, n_c = sum_route(daily_map_curr, year_c, month_c, cutoff_curr)
+    prev_sums, n_p = sum_route(daily_map_prev, year_p, month_p, cutoff_prev)
+    return {
+        "regions": REGIONS,
+        "curr": [curr_sums[r] for r in REGIONS],
+        "prev": [prev_sums[r] for r in REGIONS],
+        "days_curr": n_c, "days_prev": n_p,
+    }
+
+
 # ---------- 라벨 포맷 ----------
 def fmt_peak_hour(h) -> str:
     """피크 시간대 라벨. 형식 통일: '08~09' (시작~종료)."""

@@ -6,6 +6,7 @@ Daily_Data/passgr_YYYYMMDD.pkl에 통합 dict 저장.
 """
 from __future__ import annotations
 
+import calendar
 import csv
 import hmac
 import io
@@ -17,6 +18,11 @@ import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
+
+try:
+    import holidays as _kr_holidays_pkg
+except ImportError:  # holidays is in requirements; this is just a safety net
+    _kr_holidays_pkg = None
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -31,9 +37,11 @@ logger = logging.getLogger("icn_pax_congestion")
 
 from icn_utils.aggregator import (
     ALL_ZONE_KEYS, REGIONS, T1_GATES, T2_GATES, WEEKDAY_KR,
-    _reserved_out, daily_totals, fmt_peak_hour, hourly_per_gate, hourly_t1_t2,
-    kpi_summary, mtd_hourly_t1_t2, mtd_per_gate, mtd_reserved, mtd_route,
-    mtd_summary, reserved_summary, route_matrix, route_summary,
+    _reserved_out, daily_series_by_month, daily_totals, fmt_peak_hour,
+    gate_compare, hourly_per_gate, hourly_t1_t2, kpi_summary,
+    monthly_compare, mtd_hourly_t1_t2, mtd_per_gate, mtd_reserved, mtd_route,
+    mtd_summary, prev_dow_avg, prev_dow_hourly_avg, prev_dow_reserved_avg,
+    reserved_summary, route_compare, route_matrix, route_summary,
 )
 from icn_utils.data_loader import list_available_dates, load_day, load_range
 from icn_utils.exchange_rate import load_rates
@@ -159,14 +167,18 @@ def build_payload(today: date | None = None, archive: bool = False) -> dict:
 def _build_payload_locked(today: date, archive: bool = False) -> dict:
     cache_key = today.strftime("%Y%m%d") + ("_a" if archive else "")
     tomorrow = today + timedelta(days=1)
-    # archive 모드: 그달 1일~말일만. live 모드: 당월 1일~D+1
-    range_start = max(today.replace(day=1), DATA_START_DATE)
-    range_end = today if archive else tomorrow
-    daily_map = load_range(str(DAILY_DIR), range_start, range_end)
+    # 이번달 1일~말일 전체 (차트·월누적용)
+    curr_first = today.replace(day=1)
+    last_dom_curr = calendar.monthrange(today.year, today.month)[1]
+    curr_last = date(today.year, today.month, last_dom_curr)
+    curr_range_start = max(curr_first, DATA_START_DATE)
+    # live 모드: D+1까지는 별도로 보장. 이번달 안에서는 curr_last를 상한으로
+    # archive 모드: 이번달(=과거 월) 말일까지
+    curr_range_end = min(curr_last, tomorrow if not archive else curr_last)
+    daily_map = load_range(str(DAILY_DIR), curr_range_start, curr_range_end)
 
-    # 전월(1일~말일) 데이터 — D-1까지 누적 일수 부족 시 baseline 폴백
-    first = today.replace(day=1)
-    prev_last = first - timedelta(days=1)
+    # 전월(1일~말일) 데이터 — 비교·차트 baseline용
+    prev_last = curr_first - timedelta(days=1)
     prev_first = prev_last.replace(day=1)
     if prev_last < DATA_START_DATE:
         prev_month_map: dict = {}
@@ -189,18 +201,35 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
 
     # 핵심 요약 (SMS 동일 기준 — 예약합계 출국)
     reserved = reserved_summary(today_data, tomorrow_data)
-    # baseline 윈도우 끝점 = focus 일자 직전 (focus=내일이면 ~today, focus=오늘이면 ~D-1)
     focus_is_tomorrow = bool(reserved["tomorrow"]["total"] > 0)
     focus_date = tomorrow if focus_is_tomorrow else today
     anchor_end = focus_date - timedelta(days=1)
-    reserved_mtd = mtd_reserved(daily_map, today, prev_month_map, anchor_end)
+    focus_wd = focus_date.weekday()
+    # 전월 동요일 평균 (예약합계 출국 = 환승객 포함) — 항공편수 대시보드와 동일 패턴
+    prev_year_kpi = prev_last.year if prev_last >= DATA_START_DATE else today.year
+    prev_month_kpi = prev_last.month if prev_last >= DATA_START_DATE else today.month
+    dow_reserved = prev_dow_reserved_avg(prev_month_map, prev_year_kpi, prev_month_kpi)
+    dow_t1 = dow_reserved["T1"].get(focus_wd, 0)
+    dow_t2 = dow_reserved["T2"].get(focus_wd, 0)
+    dow_total = dow_reserved["total"].get(focus_wd, 0)
+    dow_available = (dow_t1 > 0 or dow_t2 > 0)
+    reserved_mtd = {
+        "T1": dow_t1,
+        "T2": dow_t2,
+        "total": dow_total,
+        "available": dow_available,
+        "label": f"{prev_month_kpi}월 {WEEKDAY_KR[focus_wd]}요일 평균" if dow_available else "—",
+        "kind": "prev_dow" if dow_available else "none",
+        "anchor": f"{prev_month_kpi}월 {WEEKDAY_KR[focus_wd]}요일",
+        "days": 0,
+    }
 
-    def _delta_pct(focus_v: int, mtd_v: int):
-        if not reserved_mtd.get("available"):
+    def _delta_pct(focus_v: int, base_v: int):
+        if not dow_available:
             return None
-        if not focus_v or not mtd_v or mtd_v <= 0:
+        if not focus_v or not base_v or base_v <= 0:
             return None
-        return round((focus_v - mtd_v) / mtd_v * 100, 1)
+        return round((focus_v - base_v) / base_v * 100, 1)
 
     reserved_delta = {
         "today": {
@@ -234,10 +263,14 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
         if mtd["T2"] > 0 and kpi["tomorrow"]["T2"] > 0:
             delta_pct_T2 = round((kpi["tomorrow"]["T2"] - mtd["T2"]) / mtd["T2"] * 100, 1)
 
-    # 시간대별 차트
+    # 시간대별 차트 — baseline은 전월 동요일 평균 (항공편수 KPI 패턴과 동일)
     today_hourly = hourly_t1_t2(today_data)
     tomorrow_hourly = hourly_t1_t2(tomorrow_data)
-    mtd_hourly = mtd_hourly_t1_t2(daily_map, today, prev_month_map, anchor_end)
+    _hourly_dow = prev_dow_hourly_avg(prev_month_map, prev_year_kpi, prev_month_kpi, focus_wd)
+    mtd_hourly = {
+        **_hourly_dow,
+        "label": f"{prev_month_kpi}월 {WEEKDAY_KR[focus_wd]}요일 평균" if _hourly_dow["available"] else "—",
+    }
 
     # 출국장별 시간대 (7개 zone)
     today_per_gate = hourly_per_gate(today_data)
@@ -255,8 +288,78 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
     mtd_route_T1 = mtd_route(daily_map, today, "T1", prev_month_map, anchor_end)
     mtd_route_T2 = mtd_route(daily_map, today, "T2", prev_month_map, anchor_end)
 
+    # === 일자별 차트(항공편수 동일 패턴) + 월누적 + 동일일수 비교 ===
+    prev_year = prev_last.year if prev_last >= DATA_START_DATE else today.year
+    prev_month = prev_last.month if prev_last >= DATA_START_DATE else today.month
+    last_dom_prev = calendar.monthrange(prev_year, prev_month)[1] if prev_last >= DATA_START_DATE else 0
+    chart_last_day = max(last_dom_curr, last_dom_prev)
+
+    chart_curr = daily_series_by_month(daily_map, today.year, today.month, chart_last_day)
+    chart_prev = daily_series_by_month(prev_month_map, prev_year, prev_month, chart_last_day)
+
+    # 주말·공휴일 (이번달 기준)
+    if _kr_holidays_pkg is not None:
+        try:
+            kr_hol = _kr_holidays_pkg.KR(years=today.year)
+        except Exception:
+            kr_hol = {}
+    else:
+        kr_hol = {}
+    red_days = []
+    for d in range(1, chart_last_day + 1):
+        if d > last_dom_curr:
+            continue
+        dt = date(today.year, today.month, d)
+        if dt.weekday() >= 5 or dt in kr_hol:
+            red_days.append(d)
+
+    # 동일일수 비교용 cutoff — 이번달은 데이터 보유 최대 일자(D+1 포함, 1~13일까지 활용)
+    # 전월은 동일 일수(말일을 넘을 수 없음)
+    cutoff_curr = chart_curr["max_day"] if not archive else last_dom_curr
+    cutoff_curr = max(0, min(cutoff_curr, last_dom_curr))
+    cutoff_prev = min(cutoff_curr, last_dom_prev) if last_dom_prev > 0 else 0
+
+    monthly = monthly_compare(daily_map, prev_month_map,
+                              today.year, today.month, prev_year, prev_month,
+                              cutoff_curr, cutoff_prev)
+    gate_cmp = gate_compare(daily_map, prev_month_map,
+                            today.year, today.month, prev_year, prev_month,
+                            cutoff_curr, cutoff_prev)
+    route_cmp_T1 = route_compare(daily_map, prev_month_map, "T1",
+                                 today.year, today.month, prev_year, prev_month,
+                                 cutoff_curr, cutoff_prev)
+    route_cmp_T2 = route_compare(daily_map, prev_month_map, "T2",
+                                 today.year, today.month, prev_year, prev_month,
+                                 cutoff_curr, cutoff_prev)
+
+    prev_label_text = f"{prev_month}월" if last_dom_prev > 0 else None
+    curr_label_text = f"{today.month}월"
+    period_label = f"1~{cutoff_curr}일" if cutoff_curr > 0 else "—"
+
+    chart_data = {
+        "chart_last_day": chart_last_day,
+        "today_day": today.day if not archive else None,
+        "max_day_curr": chart_curr["max_day"],
+        "max_day_prev": chart_prev["max_day"],
+        "red_days": red_days,
+        "curr_label": curr_label_text,
+        "prev_label": prev_label_text or "전월",
+        "series": {
+            "T1_curr": chart_curr["T1"], "T2_curr": chart_curr["T2"],
+            "T1_prev": chart_prev["T1"], "T2_prev": chart_prev["T2"],
+        },
+    }
+
     # 일자별 추이
     daily_df = daily_totals(daily_map)
+
+    # 전월 동요일비 산출용 평균 (요일별 T1/T2/합계)
+    dow_avg = prev_dow_avg(prev_month_map, prev_year, prev_month) if last_dom_prev > 0 else {"T1": {}, "T2": {}, "total": {}}
+
+    def _ratio(c: int, avg) -> float | None:
+        if not avg or avg <= 0:
+            return None
+        return round((c - avg) / avg * 100, 1)
 
     table_rows = []
     for _, row in daily_df.iterrows():
@@ -270,6 +373,9 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
         is_future = (dt > today)
         wd = dt.weekday()
         is_red = wd >= 5
+        t1_v = int(row["T1"])
+        t2_v = int(row["T2"])
+        total_v = t1_v + t2_v
         table_rows.append({
             "ymd": ymd,
             "label": f"{dt.month}/{dt.day}",
@@ -278,19 +384,22 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
             "is_today": is_today,
             "is_tomorrow": is_tomorrow,
             "is_future": is_future,
-            "T1": int(row["T1"]),
-            "T2": int(row["T2"]),
-            "peak_hour_T1": fmt_peak_hour(row["peak_hour_T1"]),
-            "peak_total_T1": int(row["peak_total_T1"]),
-            "peak_hour_T2": fmt_peak_hour(row["peak_hour_T2"]),
-            "peak_total_T2": int(row["peak_total_T2"]),
+            "T1": t1_v,
+            "T2": t2_v,
+            "total": total_v,
+            "T1_ratio": _ratio(t1_v, dow_avg["T1"].get(wd)) if t1_v > 0 else None,
+            "T2_ratio": _ratio(t2_v, dow_avg["T2"].get(wd)) if t2_v > 0 else None,
+            "total_ratio": _ratio(total_v, dow_avg["total"].get(wd)) if total_v > 0 else None,
             "source": row["source"],
         })
 
     fetched_at = datetime.now(KST)
 
-    # 기간 표기 = 당월 1일 ~ focus 일자 (실제 콘텐츠에 활용된 범위)
-    data_period = f"{range_start.month}/{range_start.day} ~ {focus_date.month}/{focus_date.day}"
+    # 기간 표기 = 항공편수 대시보드와 동일 패턴: "{prev}/{curr} 1~Nㅇ일 동일기간"
+    if prev_label_text and cutoff_curr > 0:
+        data_period = f"{prev_label_text}/{curr_label_text} {period_label} 동일기간"
+    else:
+        data_period = f"{curr_range_start.month}/{curr_range_start.day} ~ {focus_date.month}/{focus_date.day}"
 
     payload = {
         # SMS 알림 동일 기준 핵심 요약 (예약합계 출국 = 환승객 포함)
@@ -342,6 +451,38 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
         "tomorrow_route_summary_T2": tomorrow_route_summary_T2,
         "mtd_route_T1": mtd_route_T1,
         "mtd_route_T2": mtd_route_T2,
+        # 일자별 차트 (항공편수 대시보드와 동일 패턴)
+        "chart_data": chart_data,
+        # 월누적 (동일일수 비교)
+        "monthly": {
+            **monthly,
+            "prev_label": prev_label_text or "전월",
+            "curr_label": curr_label_text,
+            "period_label": period_label,
+            "available": monthly["days_curr"] > 0 and monthly["days_prev"] > 0,
+        },
+        # 출국장별·도착지별 동일일수 비교
+        "gate_compare": {
+            **gate_cmp,
+            "prev_label": prev_label_text or "전월",
+            "curr_label": curr_label_text,
+            "period_label": period_label,
+            "available": gate_cmp["days_curr"] > 0,
+        },
+        "route_compare_T1": {
+            **route_cmp_T1,
+            "prev_label": prev_label_text or "전월",
+            "curr_label": curr_label_text,
+            "period_label": period_label,
+            "available": route_cmp_T1["days_curr"] > 0,
+        },
+        "route_compare_T2": {
+            **route_cmp_T2,
+            "prev_label": prev_label_text or "전월",
+            "curr_label": curr_label_text,
+            "period_label": period_label,
+            "available": route_cmp_T2["days_curr"] > 0,
+        },
         # 표·메타
         "table_rows": table_rows,
         "fetched_at": fetched_at.strftime("%Y-%m-%d %H:%M"),

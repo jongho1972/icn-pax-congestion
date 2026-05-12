@@ -545,6 +545,95 @@
       height: 360px;
     }
     .chart.tall { height: 420px; }
+    /* 일자별 (월간) 차트 — 항공편수 대시보드와 동일 패턴 */
+    .chart.daily-trend { height: 260px; margin-top: 8px; }
+    @media (max-width: 720px) {
+      .chart.daily-trend { height: 280px; }
+    }
+
+    /* 월누적 요약 텍스트 (항공편수와 동일 톤) */
+    .monthly-summary {
+      color: var(--navy-900); font-size: 17px; font-weight: 500;
+      margin: 1.25rem 0 12px 2px; line-height: 1.7;
+      letter-spacing: -0.01em;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+    }
+
+    /* 월누적·비교 표 (항공편수 table.icn 패턴 포팅) */
+    table.icn {
+      border-collapse: collapse; width: 100%;
+      margin: 4px 0 0 0;
+      font-size: 13.5px; line-height: 1.45;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1, "ss01" 1;
+      color: #0A0F1E; letter-spacing: -0.01em;
+      border-top: 1.5px solid var(--navy-900);
+      table-layout: fixed;
+    }
+    table.icn th, table.icn td {
+      border: none;
+      border-bottom: 1px solid var(--slate-050);
+      padding: 7px 18px 7px 8px;
+      font-weight: 500;
+    }
+    table.icn thead th {
+      background: transparent; font-weight: 600; font-size: 12px;
+      color: var(--slate-500); text-align: right;
+      padding: 10px 18px 10px 8px; line-height: 1.35;
+      letter-spacing: 0.01em;
+      border-bottom: 1px solid var(--slate-200);
+    }
+    table.icn thead th[rowspan],
+    table.icn thead th.t1-group,
+    table.icn thead th.t2-group { text-align: center; padding: 10px 12px; }
+    table.icn thead th.t1-group { background: var(--blue-025); color: var(--navy-900); }
+    table.icn thead th.t2-group { background: var(--orange-025); color: var(--orange-600); }
+    table.icn thead th.tot-group { background: var(--slate-050); color: var(--slate-700); }
+    table.icn th.t2-last, table.icn td.t2-last {
+      border-right: 1px solid var(--slate-200);
+      padding-right: 18px;
+    }
+    table.icn th.t2-last + th, table.icn td.t2-last + td { padding-left: 18px; }
+    /* 일자별 통합 표 (T1·T2·T1+T2 그룹) */
+    table.icn.daily-t { width: 100%; table-layout: fixed; }
+    table.icn.daily-t colgroup col:nth-child(1) { width: 86px; }
+    table.icn.daily-t colgroup col:nth-child(2) { width: 40px; }
+    table.icn.daily-t td.label,
+    table.icn.daily-t thead th.label { text-align: left; padding-left: 12px; }
+    table.icn.daily-t td.label { background: transparent; }
+    table.icn.daily-t td.dow { color: var(--slate-500); font-weight: 500; text-align: center; }
+    table.icn.daily-t td.red-day, table.icn.daily-t th.red-day { color: var(--red-day); }
+    table.icn.daily-t tr.future-row td { background: var(--future-bg); color: #78350F; }
+    table.icn.daily-t tr.future-row td.label { background: var(--future-bg); color: #78350F; font-weight: 600; }
+    table.icn.daily-t tr.tomorrow-row td { font-weight: 700; background: var(--blue-025); color: var(--navy-900); }
+    table.icn.daily-t tr.tomorrow-row td.label { background: var(--blue-025); color: var(--navy-900); }
+    table.icn.daily-t tr.tomorrow-row td.label::after {
+      content: ' (내일)';
+      font-size: 11px; color: var(--navy-700); font-weight: 700;
+      margin-left: 2px;
+    }
+    table.icn colgroup col.col-label { width: 96px; }
+    table.icn td { text-align: right; }
+    table.icn td.label {
+      text-align: center;
+      background: transparent; color: var(--slate-700); font-weight: 500;
+      padding: 7px 12px;
+    }
+    table.icn td.pos { color: var(--crimson); font-weight: 600; font-variant-numeric: tabular-nums; }
+    table.icn td.neg { color: var(--delta-blue); font-weight: 600; font-variant-numeric: tabular-nums; }
+    table.icn td.dash { color: var(--slate-400); font-weight: 400; }
+    table.icn th.t1-last, table.icn td.t1-last {
+      border-right: 1px solid var(--slate-200);
+      padding-right: 18px;
+    }
+    table.icn th.t1-last + th, table.icn td.t1-last + td { padding-left: 18px; }
+    table.icn tr.total-row td {
+      background: var(--blue-025); color: var(--navy-900); font-weight: 700;
+    }
+    table.icn tr.total-row td.label {
+      background: var(--blue-025); color: var(--navy-900); font-weight: 700;
+    }
 
     /* 표 */
     .table-wrap {
@@ -790,6 +879,13 @@
   </div>
   <div class="period-note">기간 : {{ p.data_period }}</div>
 
+  <p class="section-note" style="margin:8px 0 4px;color:var(--text-light);font-size:12.5px;">
+    ※ 핵심 요약 카드만 환승객 포함(SMS 동일 기준), 그 외 통계(일자별·시간대별·월누적·출국장별·도착지별)는 <b>실제 출국장을 통과하는 인원</b> 기준입니다.
+  </p>
+
+  {# ▼ 일자별 (타이틀 → KPI → 일자별 추이 차트 → 일자별 표) #}
+  <h2 class="section-title" style="margin-top: 1.25rem;">일자별</h2>
+
   {# 핵심 요약 — 내일 데이터가 있으면 내일, 없으면 오늘을 보여준다 (SMS 알림과 동일 기준) #}
   {% set has_tomorrow = p.reserved.tomorrow.total > 0 %}
   {% set focus = p.reserved.tomorrow if has_tomorrow else p.reserved.today %}
@@ -846,12 +942,172 @@
     {% endif %}
   </div>
 
-  <!-- 출국장별 출국객수 (D+1 평면도) -->
+  {# 일자별 T1/T2 추이 차트 (이번달 실선 + 전월 평균 가로선 + 내일 수직선) #}
+  <div id="chart_daily_t1" class="chart daily-trend" style="margin-top: 12px;"></div>
+  <div id="chart_daily_t2" class="chart daily-trend" style="margin-bottom: 18px;"></div>
+
+  {# 일자별 표 — 항공편수 패턴: 날짜·요일·T1[이번달·전월동요일비]·T2[이번달·전월동요일비]·T1+T2[이번달·전월동요일비] #}
+  {%- macro ratio_td(pct, last_in_group) -%}
+    {%- set cls_last = ' t1-last' if last_in_group else '' -%}
+    {%- if pct is none -%}
+      <td class="dash{{ cls_last }}">—</td>
+    {%- elif pct > 0.05 -%}
+      <td class="pos{{ cls_last }}">▲ {{ '{:.1f}'.format(pct) }}%</td>
+    {%- elif pct < -0.05 -%}
+      <td class="neg{{ cls_last }}">▼ {{ '{:.1f}'.format(pct * -1) }}%</td>
+    {%- else -%}
+      <td class="{{ cls_last.strip() }}">― 0.0%</td>
+    {%- endif -%}
+  {%- endmacro %}
+  <section style="margin-top: 0;">
+    <div class="table-wrap" role="region" tabindex="0" aria-label="일자별 출국장 이용객 표">
+      <table class="icn daily-t">
+        <caption class="visually-hidden">일자별 T1·T2 총 이용객수 + 전월 동요일 평균 대비 비율</caption>
+        <colgroup><col><col><col><col><col><col><col><col></colgroup>
+        <thead>
+          <tr>
+            <th rowspan="2">날짜</th>
+            <th rowspan="2">요일</th>
+            <th colspan="2" class="t1-group t1-last">T1</th>
+            <th colspan="2" class="t2-group t2-last">T2</th>
+            <th colspan="2" class="tot-group">T1+T2</th>
+          </tr>
+          <tr>
+            <th>{{ p.monthly.curr_label }}</th><th class="t1-last">전월동요일비</th>
+            <th>{{ p.monthly.curr_label }}</th><th class="t2-last">전월동요일비</th>
+            <th>{{ p.monthly.curr_label }}</th><th>전월동요일비</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in p.table_rows %}
+          <tr class="{% if r.is_tomorrow %}tomorrow-row{% elif r.is_future %}future-row{% endif %}">
+            <td class="label{% if r.is_red %} red-day{% endif %}">{{ r.label }}</td>
+            <td class="dow{% if r.is_red %} red-day{% endif %}">{{ r.weekday }}</td>
+            <td>{% if r.T1 > 0 %}{{ "{:,}".format(r.T1) }}{% else %}<span class="dash">—</span>{% endif %}</td>
+            {{ ratio_td(r.T1_ratio, true) }}
+            <td>{% if r.T2 > 0 %}{{ "{:,}".format(r.T2) }}{% else %}<span class="dash">—</span>{% endif %}</td>
+            {{ ratio_td(r.T2_ratio, true) }}
+            <td>{% if r.total > 0 %}{{ "{:,}".format(r.total) }}{% else %}<span class="dash">—</span>{% endif %}</td>
+            {{ ratio_td(r.total_ratio, false) }}
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {# ▼ 시간대별 — 일자별과 분리된 별도 섹션 #}
+  <section>
+    <h2 class="section-title">시간대별</h2>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>T1</h3>
+        <div id="chart-hourly-t1" class="chart"></div>
+      </div>
+      <div class="chart-card">
+        <h3>T2</h3>
+        <div id="chart-hourly-t2" class="chart"></div>
+      </div>
+    </div>
+  </section>
+
+  {# 월누적 (이번달 1~max_data_day vs 전월 동일일수) #}
+  {% set mo = p.monthly %}
+  <section>
+    <h2 class="section-title">월누적</h2>
+    {% if mo.available %}
+      {% set tot_curr = mo.T1_curr + mo.T2_curr %}
+      {% set tot_prev = mo.T1_prev + mo.T2_prev %}
+      {% set days_c = mo.days_curr %}
+      {% set avg_c = (tot_curr / days_c) if days_c > 0 else 0 %}
+      {%- macro trend_html(c, p) -%}
+        {%- if p and p > 0 -%}
+          {%- set r = ((c - p) / p) -%}
+          {%- if r > 0.0001 -%}
+            <span style="color:#8C0023;font-weight:600;font-variant-numeric:tabular-nums;">(전월비 ▲ {{ '{:.1f}'.format(r * 100) }}%)</span>
+          {%- elif r < -0.0001 -%}
+            <span style="color:#2A52BE;font-weight:600;font-variant-numeric:tabular-nums;">(전월비 ▼ {{ '{:.1f}'.format((r * -1) * 100) }}%)</span>
+          {%- else -%}
+            <span style="color:#64748B;font-weight:600;font-variant-numeric:tabular-nums;">(전월비 ― 0.0%)</span>
+          {%- endif -%}
+        {%- endif -%}
+      {%- endmacro %}
+      <div class="monthly-summary">
+        <b>T1+T2 기준</b> {{ "{:,}".format(tot_curr) }} 명 {{ trend_html(tot_curr, tot_prev) }}
+        &nbsp;&nbsp;·&nbsp;&nbsp;
+        <b>일평균</b> {{ "{:,.0f}".format(avg_c) }} 명
+      </div>
+      <div class="table-wrap">
+        <table class="icn">
+          <colgroup>
+            <col class="col-label"><col><col><col><col><col><col>
+          </colgroup>
+          <thead>
+            <tr>
+              <th rowspan="2">구분</th>
+              <th colspan="3" class="t1-group t1-last">T1</th>
+              <th colspan="3" class="t2-group">T2</th>
+            </tr>
+            <tr>
+              <th>{{ mo.prev_label }}</th>
+              <th>{{ mo.curr_label }}</th>
+              <th class="t1-last">전월비</th>
+              <th>{{ mo.prev_label }}</th>
+              <th>{{ mo.curr_label }}</th>
+              <th>전월비</th>
+            </tr>
+          </thead>
+          <tbody>
+            {%- macro pct_cell(c, p, t1last) -%}
+              {%- if p and p > 0 -%}
+                {%- set r = ((c - p) / p) -%}
+                {%- if r > 0.0001 -%}
+                  <td class="pos{% if t1last %} t1-last{% endif %}">▲ {{ '{:.1f}'.format(r * 100) }}%</td>
+                {%- elif r < -0.0001 -%}
+                  <td class="neg{% if t1last %} t1-last{% endif %}">▼ {{ '{:.1f}'.format((r * -1) * 100) }}%</td>
+                {%- else -%}
+                  <td{% if t1last %} class="t1-last"{% endif %}>― 0.0%</td>
+                {%- endif -%}
+              {%- else -%}
+                <td class="dash{% if t1last %} t1-last{% endif %}">—</td>
+              {%- endif -%}
+            {%- endmacro %}
+            {%- macro val_cell(v, t1last) -%}
+              {%- if v and v > 0 -%}
+                <td{% if t1last %} class="t1-last"{% endif %}>{{ '{:,.0f}'.format(v) }}</td>
+              {%- else -%}
+                <td class="dash{% if t1last %} t1-last{% endif %}">—</td>
+              {%- endif -%}
+            {%- endmacro %}
+            <tr>
+              <td class="label">월누적</td>
+              {{ val_cell(mo.T1_prev, false) }}
+              {{ val_cell(mo.T1_curr, false) }}
+              {{ pct_cell(mo.T1_curr, mo.T1_prev, true) }}
+              {{ val_cell(mo.T2_prev, false) }}
+              {{ val_cell(mo.T2_curr, false) }}
+              {{ pct_cell(mo.T2_curr, mo.T2_prev, false) }}
+            </tr>
+            <tr>
+              <td class="label">일평균</td>
+              {{ val_cell((mo.T1_prev / mo.days_prev) if mo.days_prev > 0 else 0, false) }}
+              {{ val_cell((mo.T1_curr / mo.days_curr) if mo.days_curr > 0 else 0, false) }}
+              {{ pct_cell(mo.T1_curr, mo.T1_prev, true) }}
+              {{ val_cell((mo.T2_prev / mo.days_prev) if mo.days_prev > 0 else 0, false) }}
+              {{ val_cell((mo.T2_curr / mo.days_curr) if mo.days_curr > 0 else 0, false) }}
+              {{ pct_cell(mo.T2_curr, mo.T2_prev, false) }}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="section-note">전월 비교 데이터가 부족합니다.</p>
+    {% endif %}
+  </section>
+
+  <!-- 출국장별 출국객수 (이번달 MTD vs 전월 동일일수 MTD) -->
   <section>
     <h2 class="section-title">출국장별</h2>
-    <p class="section-note" style="margin:-4px 0 12px;color:var(--text-light);font-size:12.5px;">
-      ※ 아래 모든 통계(출국장별·일자별·시간대별·도착지별)는 <b>실제 출국장을 통과하는 인원</b> 기준입니다 (환승객 제외).
-    </p>
 
     <div class="map-controls">
       <label class="map-hour">시간대
@@ -993,67 +1249,11 @@
     </div>
 
     <p class="section-note">
-      각 출국장의 {{ '내일' if has_tomorrow else '오늘' }} 출국객수{% if baseline_available %}와 {{ baseline_label }}{% endif %}. 색상이 진할수록 붐빔.
-      시간대 셀렉터로 오전·오후·저녁·심야 그룹별 분포도 확인 가능합니다.
+      색상이 진할수록 붐빔. 시간대 셀렉터로 오전·오후·저녁·심야 그룹별 분포도 확인 가능합니다.
     </p>
   </section>
 
-  <!-- 일자별 표 (평면도 다음) -->
-  <section>
-    <h2 class="section-title">일자별</h2>
-    <div class="table-wrap" role="region" tabindex="0" aria-label="일자별 출국장 이용객 표">
-      <table class="daily">
-        <caption class="visually-hidden">D-29부터 D+1까지 일자별 T1·T2 총 이용객수와 피크 시간/객수</caption>
-        <thead>
-          <tr>
-            <th scope="col" class="label">날짜</th>
-            <th scope="col" class="dow">요일</th>
-            <th scope="col">T1</th>
-            <th scope="col" class="peak-h">T1 피크 시간</th>
-            <th scope="col" class="peak-t">T1 피크 객수</th>
-            <th scope="col" class="peak-combined">T1 피크</th>
-            <th scope="col">T2</th>
-            <th scope="col" class="peak-h">T2 피크 시간</th>
-            <th scope="col" class="peak-t">T2 피크 객수</th>
-            <th scope="col" class="peak-combined">T2 피크</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for r in p.table_rows %}
-          <tr class="{% if r.is_tomorrow %}tomorrow-row{% elif r.is_future %}future-row{% endif %}">
-            <td class="label{% if r.is_red %} red{% endif %}">{{ r.label }}</td>
-            <td class="dow{% if r.is_red %} red{% endif %}">{{ r.weekday }}</td>
-            <td class="t1">{% if r.T1 > 0 %}{{ "{:,}".format(r.T1) }}{% else %}<span class="dash">—</span>{% endif %}</td>
-            <td class="t1 peak-h">{{ r.peak_hour_T1 }}</td>
-            <td class="t1 peak-t">{% if r.peak_total_T1 > 0 %}{{ "{:,}".format(r.peak_total_T1) }}{% else %}<span class="dash">—</span>{% endif %}</td>
-            <td class="t1 peak-combined">{% if r.peak_total_T1 > 0 %}{{ r.peak_hour_T1 }} <span style="color:var(--text-light);font-weight:500">({{ "{:,}".format(r.peak_total_T1) }})</span>{% else %}<span class="dash">—</span>{% endif %}</td>
-            <td class="t2">{% if r.T2 > 0 %}{{ "{:,}".format(r.T2) }}{% else %}<span class="dash">—</span>{% endif %}</td>
-            <td class="t2 peak-h">{{ r.peak_hour_T2 }}</td>
-            <td class="t2 peak-t">{% if r.peak_total_T2 > 0 %}{{ "{:,}".format(r.peak_total_T2) }}{% else %}<span class="dash">—</span>{% endif %}</td>
-            <td class="t2 peak-combined">{% if r.peak_total_T2 > 0 %}{{ r.peak_hour_T2 }} <span style="color:var(--text-light);font-weight:500">({{ "{:,}".format(r.peak_total_T2) }})</span>{% else %}<span class="dash">—</span>{% endif %}</td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- 시간대별 차트 -->
-  <section>
-    <h2 class="section-title">시간대별</h2>
-    <div class="chart-grid">
-      <div class="chart-card">
-        <h3>T1</h3>
-        <div id="chart-hourly-t1" class="chart"></div>
-      </div>
-      <div class="chart-card">
-        <h3>T2</h3>
-        <div id="chart-hourly-t2" class="chart"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 도착지별 — 마케팅 핵심 데이터 -->
+  <!-- 도착지별 — 이번달 MTD vs 전월 동일일수 MTD -->
   <section>
     <h2 class="section-title">도착지별</h2>
 
@@ -1082,7 +1282,7 @@
       <div class="footnote-title">산출 방식</div>
       <ul>
         <li>항공사 운항 스케줄·예약 정보 + 공항 내 빅데이터 센서로 수집한 여객 흐름</li>
-        <li>매일 17시에 다음날(D+1) 예측치 갱신, 당일(D-0)은 실측을 일부 반영해 보정</li>
+        <li>매일 17시에 내일 예측치 갱신, 오늘 데이터는 실측을 일부 반영해 보정</li>
         <li>예상 고객수 산출 로직은 비공개(실제 결과와 차이 가능)</li>
       </ul>
     </div>
@@ -1158,13 +1358,11 @@
   };
   var CONFIG = { displayModeBar: false, responsive: true };
 
-  // 화면 전체 기준 일자 — 핵심 요약 카드와 모든 통계가 같은 일자 사용
+  // 화면 전체 기준 일자 — 핵심 요약 카드 + 시간대별 차트만 focus 일자(오늘/내일) 사용.
+  // 출국장별·도착지별은 이번달 MTD vs 전월 동일일수 MTD 비교로 변경됨.
   var FOCUS_TOMORROW = !!P.focus_is_tomorrow;
   var FOCUS_LABEL = P.focus_label || (FOCUS_TOMORROW ? '내일 예상' : '오늘 예상');
   var FOCUS_HOURLY = FOCUS_TOMORROW ? P.tomorrow_hourly : P.today_hourly;
-  var FOCUS_PER_GATE = FOCUS_TOMORROW ? P.tomorrow_per_gate : P.today_per_gate;
-  var FOCUS_ROUTE_T1 = FOCUS_TOMORROW ? P.tomorrow_route_summary_T1 : P.today_route_summary_T1;
-  var FOCUS_ROUTE_T2 = FOCUS_TOMORROW ? P.tomorrow_route_summary_T2 : P.today_route_summary_T2;
 
   function hourTicks() {
     // '08~09' 형태로 통일 (페이지 다른 곳과 일관)
@@ -1238,36 +1436,31 @@
     '기타': '#ADB5BD',
   };
 
-  function drawRouteSummary(elId, summary, mtd, baseColor, yRange) {
-    if (!summary || !summary.regions) return;
-    var regions = summary.regions;
-    var mtdAvailable = !!(mtd && mtd.available);
-    var mtdLabel = (mtd && mtd.label) || 'MTD 평균';
-    var traces = [];
-    if (mtdAvailable) {
-      var mtdValues = mtd.values || regions.map(function() { return 0; });
-      traces.push({
-        x: regions, y: mtdValues,
-        type: 'bar', name: mtdLabel,
-        marker: { color: '#D0D5DD' },
-        text: mtdValues.map(function(v) { return v > 0 ? v.toLocaleString() : ''; }),
-        textposition: 'outside', textfont: { size: 10, color: '#6B7280' },
-        hovertemplate: '%{x}<br>' + mtdLabel + ': %{y:,}명<extra></extra>',
-      });
-    }
-    traces.push({
-      x: regions, y: summary.values,
-      type: 'bar', name: FOCUS_LABEL,
+  // 도착지별 — 이번달 MTD vs 전월 동일일수 MTD 그룹바
+  function drawRouteCompare(elId, cmp, baseColor, yRange) {
+    if (!cmp || !cmp.available) return;
+    var regions = cmp.regions;
+    var prevLabel = (cmp.prev_label || '전월') + ' ' + (cmp.period_label || '');
+    var currLabel = (cmp.curr_label || '이번달') + ' ' + (cmp.period_label || '');
+    var traces = [{
+      x: regions, y: cmp.prev,
+      type: 'bar', name: prevLabel,
+      marker: { color: '#D0D5DD' },
+      text: cmp.prev.map(function(v) { return v > 0 ? v.toLocaleString() : ''; }),
+      textposition: 'outside', textfont: { size: 10, color: '#6B7280' },
+      hovertemplate: '%{x}<br>' + prevLabel + ': %{y:,}명<extra></extra>',
+    }, {
+      x: regions, y: cmp.curr,
+      type: 'bar', name: currLabel,
       marker: { color: baseColor },
-      text: summary.values.map(function(v) { return v > 0 ? v.toLocaleString() : ''; }),
+      text: cmp.curr.map(function(v) { return v > 0 ? v.toLocaleString() : ''; }),
       textposition: 'outside', textfont: { size: 10 },
-      hovertemplate: '%{x}<br>' + FOCUS_LABEL + ': %{y:,}명<extra></extra>',
-    });
+      hovertemplate: '%{x}<br>' + currLabel + ': %{y:,}명<extra></extra>',
+    }];
     Plotly.newPlot(elId, traces, Object.assign({}, COMMON_LAYOUT, {
       barmode: 'group', bargap: 0.25, bargroupgap: 0.08,
       yaxis: { title: { text: '객수(명)', standoff: 8 }, gridcolor: '#EAECF0', range: yRange },
       xaxis: { tickfont: { size: 11 } },
-      // 범례를 plot area 안쪽 좌상단으로 → 카드 h3와 차트 사이 여백 제거
       legend: { orientation: 'h', x: 0, y: 0.99, yanchor: 'top', xanchor: 'left',
                 bgcolor: 'rgba(255,255,255,0.85)', font: { size: 11 } },
       margin: Object.assign({}, COMMON_LAYOUT.margin || {}, { t: 6 }),
@@ -1296,20 +1489,177 @@
     }), CONFIG);
   }
 
-  // T1·T2 공통 y축 범위 (FOCUS + baseline 모든 권역 값에서 최댓값 기준)
+  // T1·T2 공통 y축 범위 (이번달·전월 모든 권역 값에서 최댓값 기준)
   var routeMaxAll = 0;
-  var _routeSources = [FOCUS_ROUTE_T1, FOCUS_ROUTE_T2];
-  if (P.mtd_route_T1 && P.mtd_route_T1.available) _routeSources.push(P.mtd_route_T1);
-  if (P.mtd_route_T2 && P.mtd_route_T2.available) _routeSources.push(P.mtd_route_T2);
-  _routeSources.forEach(function(s) {
-    var arr = (s && s.values) || [];
-    arr.forEach(function(v) { if (v > routeMaxAll) routeMaxAll = v; });
+  [P.route_compare_T1, P.route_compare_T2].forEach(function(cmp) {
+    if (!cmp) return;
+    (cmp.curr || []).forEach(function(v) { if (v > routeMaxAll) routeMaxAll = v; });
+    (cmp.prev || []).forEach(function(v) { if (v > routeMaxAll) routeMaxAll = v; });
   });
-  // 데이터 라벨이 막대 위에 출력되므로 ~18% 여유 + 1k 단위 ceil
-  var routeYRange = [0, Math.max(1000, Math.ceil(routeMaxAll * 1.18 / 1000) * 1000)];
+  // 데이터 라벨이 막대 위에 출력되므로 ~18% 여유 + 10k 단위 ceil (누적값 스케일)
+  var routeYRange = [0, Math.max(10000, Math.ceil(routeMaxAll * 1.18 / 10000) * 10000)];
 
-  drawRouteSummary('chart-route-summary-t1', FOCUS_ROUTE_T1, P.mtd_route_T1, '#1F6FEB', routeYRange);
-  drawRouteSummary('chart-route-summary-t2', FOCUS_ROUTE_T2, P.mtd_route_T2, '#C26420', routeYRange);
+  drawRouteCompare('chart-route-summary-t1', P.route_compare_T1, '#1F6FEB', routeYRange);
+  drawRouteCompare('chart-route-summary-t2', P.route_compare_T2, '#C26420', routeYRange);
+
+  // ===== 일자별 추이 차트 (이번달 실선 + 전월 점선 + 전월 평균 + Today 수직선) =====
+  (function drawDailyTrendCharts() {
+    var cd = P.chart_data;
+    if (!cd) return;
+    var redDays = new Set(cd.red_days || []);
+    var chartLastDay = cd.chart_last_day || 31;
+    var days = [];
+    for (var d = 1; d <= chartLastDay; d++) days.push(d);
+
+    function computeTicks() {
+      var isMobile = window.matchMedia('(max-width: 640px)').matches;
+      var td;
+      if (isMobile) {
+        var picks = [1, 5, 10, 15, 20, 25, chartLastDay];
+        if (cd.today_day) picks.push(cd.today_day);
+        td = Array.from(new Set(picks.filter(function(x) { return x >= 1 && x <= chartLastDay; })))
+                  .sort(function(a, b) { return a - b; });
+      } else {
+        td = days;
+      }
+      var tt = td.map(function(d) {
+        return redDays.has(d)
+          ? '<span style="color:#C00000;font-weight:bold;">' + d + '</span>'
+          : String(d);
+      });
+      return { tickDays: td, tickText: tt };
+    }
+    var tickState = computeTicks();
+
+    function avg(arr) {
+      var xs = arr.filter(function(v) { return v != null; });
+      return xs.length ? xs.reduce(function(s, v) { return s + v; }, 0) / xs.length : null;
+    }
+
+    // y축 범위: 이번달(curr) 시리즈 + 전월 평균선을 모두 포함하도록 산출
+    var t1PrevAvgPre = (function() {
+      var xs = (cd.series.T1_prev || []).filter(function(v) { return v != null; });
+      return xs.length ? xs.reduce(function(s, v) { return s + v; }, 0) / xs.length : null;
+    })();
+    var t2PrevAvgPre = (function() {
+      var xs = (cd.series.T2_prev || []).filter(function(v) { return v != null; });
+      return xs.length ? xs.reduce(function(s, v) { return s + v; }, 0) / xs.length : null;
+    })();
+    var allValues = [].concat(
+      cd.series.T1_curr || [], cd.series.T2_curr || [],
+      t1PrevAvgPre != null ? [t1PrevAvgPre] : [],
+      t2PrevAvgPre != null ? [t2PrevAvgPre] : []
+    ).filter(function(v) { return v != null; });
+    var yMin = allValues.length ? Math.max(0, Math.min.apply(null, allValues) - 5000) : 0;
+    var yMax = allValues.length ? Math.max.apply(null, allValues) + 5000 : 10000;
+
+    function layout(termTitle, color, prevAvg) {
+      var shapes = [];
+      var annotations = [];
+      if (cd.today_day && cd.today_day < chartLastDay) {
+        var tomorrowDay = cd.today_day + 1;
+        shapes.push({
+          type: 'line',
+          x0: tomorrowDay, x1: tomorrowDay,
+          y0: yMin, y1: yMax,
+          line: { color: '#94A3B8', width: 1.2, dash: '5px,4px' },
+          xref: 'x', yref: 'y',
+        });
+        annotations.push({
+          x: tomorrowDay, y: yMax,
+          text: '내일', showarrow: false,
+          font: { size: 10, color: '#64748B', weight: 600 },
+          xanchor: 'left', yanchor: 'top',
+          xshift: 4, yshift: -2,
+        });
+      }
+      if (prevAvg != null && isFinite(prevAvg)) {
+        shapes.push({
+          type: 'line',
+          x0: 0.5, x1: chartLastDay + 0.5,
+          y0: prevAvg, y1: prevAvg,
+          line: { color: '#94A3B8', width: 1.2 },
+          xref: 'x', yref: 'y',
+        });
+        annotations.push({
+          x: 0, xref: 'paper',
+          y: prevAvg, yref: 'y',
+          text: cd.prev_label + ' 평균 ' + Math.round(prevAvg).toLocaleString(),
+          showarrow: false,
+          font: { size: 9, color: '#64748B', weight: 600 },
+          xanchor: 'right', yanchor: 'middle',
+          xshift: -6,
+          align: 'right',
+          bgcolor: 'rgba(255,255,255,0.95)',
+          borderpad: 2,
+        });
+      }
+      return {
+        title: {
+          text: termTitle, x: 0, xanchor: 'left',
+          font: { size: 18, color: color, weight: 700 },
+          pad: { b: 4 },
+        },
+        xaxis: {
+          title: '', tickmode: 'array', tickvals: tickState.tickDays, ticktext: tickState.tickText,
+          tickfont: { size: 11, color: '#64748B' },
+          showline: true, linecolor: '#CBD5E1',
+          showgrid: false, zeroline: false,
+          range: [0.5, chartLastDay + 0.5],
+        },
+        yaxis: {
+          title: '', tickfont: { size: 11, color: '#64748B' },
+          showline: true, linecolor: '#CBD5E1',
+          showgrid: true, gridcolor: '#F1F5F9', griddash: 'dot',
+          zeroline: false,
+          range: [yMin, yMax],
+        },
+        margin: { l: 90, r: 20, t: 40, b: 36 },
+        showlegend: false,
+        plot_bgcolor: '#fff', paper_bgcolor: '#fff',
+        shapes: shapes, annotations: annotations,
+        hovermode: 'x unified',
+        hoverlabel: { bgcolor: '#fff', bordercolor: '#CBD5E1', font: { size: 12, color: '#0B2E5C' } },
+      };
+    }
+
+    function traces(curr, color) {
+      return [
+        {
+          x: days, y: curr, mode: 'lines+markers',
+          line: { color: color, width: 2.2 },
+          marker: { color: color, size: 6 },
+          name: cd.curr_label,
+          hovertemplate: cd.curr_label + ' %{y:,}명<extra></extra>',
+          connectgaps: false,
+        },
+      ];
+    }
+
+    var t1PrevAvg = avg(cd.series.T1_prev || []);
+    var t2PrevAvg = avg(cd.series.T2_prev || []);
+
+    Plotly.newPlot('chart_daily_t1',
+      traces(cd.series.T1_curr, '#1F6FEB'),
+      layout('T1', '#1F6FEB', t1PrevAvg),
+      { displayModeBar: false, responsive: true });
+
+    Plotly.newPlot('chart_daily_t2',
+      traces(cd.series.T2_curr, '#C26420'),
+      layout('T2', '#C26420', t2PrevAvg),
+      { displayModeBar: false, responsive: true });
+
+    var _resizeT;
+    window.addEventListener('resize', function() {
+      clearTimeout(_resizeT);
+      _resizeT = setTimeout(function() {
+        var t = computeTicks();
+        var update = { 'xaxis.tickvals': t.tickDays, 'xaxis.ticktext': t.tickText };
+        if (document.getElementById('chart_daily_t1')) Plotly.relayout('chart_daily_t1', update);
+        if (document.getElementById('chart_daily_t2')) Plotly.relayout('chart_daily_t2', update);
+      }, 150);
+    });
+  })();
 
   // ===== 출국장 평면도 =====
   // SVG는 6개 zone이지만 데이터 소스(airport.kr 엑셀)는 5·6번을 합산해 제공한다.
@@ -1353,15 +1703,16 @@
     return s;
   }
 
-  // period='all'이면 24시간 합계, 아니면 해당 시간대 그룹 합산 (MTD도 그룹 비율로 스케일)
+  // period='all'이면 24시간 합계, 아니면 해당 시간대 그룹 합산
+  // 데이터 소스: gate_compare (이번달 동일일수 누적 vs 전월 동일일수 누적)
   function paintMap(period) {
-    var perGate = FOCUS_PER_GATE || {};   // 카드 focus 일자에 동기화
-    var todayPerGate = P.today_per_gate || {};  // 시간대 그룹 비율 계산용 (그대로)
-    var gateMtd = (P.gate_mtd && P.gate_mtd.values) || {};
-    var gateMtdAvailable = !!(P.gate_mtd && P.gate_mtd.available);
+    var gc = P.gate_compare || {};
+    var available = !!gc.available;
+    var curr = (gc.curr_hourly || {});  // {zone: [24]} — 동일일수 누적 시간대 매트릭스
+    var prev = (gc.prev_hourly || {});
     var hours = PERIOD_HOURS[period] || null;  // null = 전체
 
-    var values = {}, mtdValues = {};
+    var values = {}, prevValues = {};
     var t1Sum = 0, t2Sum = 0, max = 0;
     // 원본 데이터에서 5·6번 출국장은 합산값(t1dg56)으로 제공된다.
     // → 6번 zone은 시각적으로 숨기고 5번 zone에만 합산값을 한 번 표시한다.
@@ -1369,25 +1720,14 @@
     if (hideDg6) hideDg6.style.display = 'none';
 
     MAP_KEYS.forEach(function(k) {
-      if (k === 't1dg6') { values[k] = 0; mtdValues[k] = 0; return; }
+      if (k === 't1dg6') { values[k] = 0; prevValues[k] = 0; return; }
       var dataKey = MAP_DATA_ALIAS[k] || k;  // 5·6 합산: t1dg5는 t1dg56 사용
-      var arr = perGate[dataKey] || [];
-      var v = _sumHours(arr, hours);
+      var currArr = curr[dataKey] || [];
+      var prevArr = prev[dataKey] || [];
+      var v = _sumHours(currArr, hours);
+      var p = _sumHours(prevArr, hours);
       values[k] = v;
-      // baseline 부재 시 MTD 표기 자체 생략
-      var mtdDay = gateMtdAvailable ? (gateMtd[dataKey] || 0) : 0;
-      var mtdH = mtdDay;
-      if (hours && mtdDay > 0) {
-        var todayArr = todayPerGate[dataKey] || [];
-        var todayDaySum = _sumHours(todayArr, null);
-        if (todayDaySum > 0) {
-          var ratio = _sumHours(todayArr, hours) / todayDaySum;
-          mtdH = Math.round(mtdDay * ratio);
-        } else {
-          mtdH = 0;
-        }
-      }
-      mtdValues[k] = mtdH;
+      prevValues[k] = available ? p : 0;
       // 5·6 합산값을 두 zone에 동일 표시 → t1Sum 중복 가산 방지
       if (k.indexOf('t1') === 0) {
         if (k !== 't1dg6') t1Sum += v;
@@ -1400,16 +1740,16 @@
     MAP_KEYS.forEach(function(k) {
       if (k === 't1dg6') return;  // 5·6 합산 → 6번 zone은 숨김
       var v = values[k];
-      var mtdH = mtdValues[k];
+      var pv = prevValues[k];
       var t = max > 0 ? v / max : 0;
       var zoneEl = document.querySelector('.dg-zone[data-key="'+k+'"]');
       var rect = zoneEl ? zoneEl.querySelector('.dg-rect') : null;
       var paxText = zoneEl ? zoneEl.querySelector('.dg-pax') : null;
-      var mtdText = zoneEl ? zoneEl.querySelector('.dg-mtd') : null;
+      var prevText = zoneEl ? zoneEl.querySelector('.dg-mtd') : null;
       var deltaText = zoneEl ? zoneEl.querySelector('.dg-delta') : null;
       var titleEl = zoneEl ? zoneEl.querySelector('title') : null;
 
-      var inactive = (v === 0 && mtdH === 0);
+      var inactive = (v === 0 && pv === 0);
       var noData = (max === 0);
 
       if (zoneEl) {
@@ -1431,18 +1771,18 @@
           paxText.textContent = (max > 0) ? (v.toLocaleString() + '명') : '—';
         }
       }
-      if (mtdText) {
-        mtdText.style.fontSize = '';
-        mtdText.style.fontWeight = '';
-        if (!inactive && mtdH > 0) {
-          mtdText.textContent = '평균 ' + mtdH.toLocaleString();
+      if (prevText) {
+        prevText.style.fontSize = '';
+        prevText.style.fontWeight = '';
+        if (!inactive && pv > 0) {
+          prevText.textContent = '전월 ' + pv.toLocaleString();
         } else {
-          mtdText.textContent = '';
+          prevText.textContent = '';
         }
       }
       if (deltaText) {
-        if (!inactive && mtdH > 0 && v > 0) {
-          var pct = (v - mtdH) / mtdH * 100;
+        if (!inactive && pv > 0 && v > 0) {
+          var pct = (v - pv) / pv * 100;
           var arrow = pct > 0.05 ? '▲' : (pct < -0.05 ? '▼' : '―');
           var color = pct > 0.05 ? '#8C0023' : (pct < -0.05 ? '#2A52BE' : '#909090');
           deltaText.textContent = arrow + ' ' + (pct > 0 ? '+' : '') + pct.toFixed(1) + '%';
@@ -1454,14 +1794,14 @@
       // SVG <title> + 그룹 aria-label = SR/툴팁 양쪽 친화
       var sumAll = t1Sum + t2Sum;
       var pct2 = sumAll > 0 ? Math.round(v / sumAll * 1000) / 10 : 0;
-      var mtdNote = (mtdH > 0) ? ' · 평균 ' + mtdH.toLocaleString() + '명' : '';
+      var prevNote = (pv > 0) ? ' · 전월 ' + pv.toLocaleString() + '명' : '';
       var ariaText;
       if (inactive) {
         ariaText = MAP_LABEL[k] + ' — 미운영';
       } else if (max === 0) {
         ariaText = MAP_LABEL[k] + ' — 데이터 없음';
       } else {
-        ariaText = MAP_LABEL[k] + ' — ' + v.toLocaleString() + '명 (점유율 ' + pct2 + '%)' + mtdNote;
+        ariaText = MAP_LABEL[k] + ' — ' + v.toLocaleString() + '명 (점유율 ' + pct2 + '%)' + prevNote;
       }
       if (titleEl) titleEl.textContent = ariaText;
       var groupEl = document.querySelector('.dg-zone[data-key="'+k+'"]');
@@ -1477,7 +1817,7 @@
         ? ('<span class="seg t1" style="padding:2px 7px;border-radius:5px;background:var(--t1-soft);color:var(--t1);font-weight:600">T1 <b>' + t1Sum.toLocaleString() + '</b>명</span>'
           + ' <span class="seg t2" style="padding:2px 7px;border-radius:5px;background:var(--t2-soft);color:var(--t2);font-weight:600">T2 <b>' + t2Sum.toLocaleString() + '</b>명</span>'
           + ' · 최대 <b>' + max.toLocaleString() + '</b>명')
-        : '<span style="color:var(--text-light)">데이터 없음 (D+1 예측 미생성 가능)</span>';
+        : '<span style="color:var(--text-light)">데이터 없음 (이번달 누적 0)</span>';
     }
     var legendMax = document.getElementById('legend-max');
     if (legendMax) legendMax.textContent = max > 0 ? max.toLocaleString() : '—';
