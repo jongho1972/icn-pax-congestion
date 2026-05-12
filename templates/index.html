@@ -879,10 +879,6 @@
   </div>
   <div class="period-note">기간 : {{ p.data_period }}</div>
 
-  <p class="section-note" style="margin:8px 0 4px;color:var(--text-light);font-size:12.5px;">
-    ※ <b>핵심 요약 카드 · 일자별 추이 · 일자별 표 · 월누적</b>은 항공사 <b>예약합계 출국</b>(환승객 포함, SMS 알림 동일 기준)으로 통일. <b>시간대별 차트 · 출국장별 평면도 · 도착지별</b>은 raw 데이터 구조상 <b>실제 출국장을 통과하는 인원</b> 기준입니다.
-  </p>
-
   {# ▼ 일자별 (타이틀 → KPI → 일자별 추이 차트 → 일자별 표) #}
   <h2 class="section-title" style="margin-top: 1.25rem;">일자별</h2>
 
@@ -999,6 +995,9 @@
   {# ▼ 시간대별 — 일자별과 분리된 별도 섹션 #}
   <section>
     <h2 class="section-title">시간대별</h2>
+    <p class="section-note" style="margin:4px 0 12px;color:var(--text-light);font-size:12.5px;">
+      ※ 여기부터(시간대별 · 출국장별 평면도 · 도착지별)는 raw 데이터 구조상 <b>실제 출국장을 통과하는 인원</b>(환승객 제외) 기준입니다.
+    </p>
     <div class="chart-grid">
       <div class="chart-card">
         <h3>T1</h3>
