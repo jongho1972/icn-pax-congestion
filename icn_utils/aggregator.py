@@ -91,18 +91,6 @@ def _hourly_per_gate_terminal(data: Optional[dict], terminal: str) -> dict[str, 
 
 
 # ---------- 차트용 ----------
-def hourly_t1_t2(data: Optional[dict]) -> dict[str, list]:
-    """24시간 × T1·T2 출국장 합계 시리즈."""
-    t1 = _hourly_terminal(data, "T1")
-    t2 = _hourly_terminal(data, "T2")
-    return {
-        "hours": HOUR_LABELS,
-        "T1": t1,
-        "T2": t2,
-        "total": [a + b for a, b in zip(t1, t2)],
-    }
-
-
 def hourly_per_gate(data: Optional[dict]) -> dict[str, list[int]]:
     """24시간 × 7개 zone (T1 5개 + T2 2개)."""
     out: dict[str, list[int]] = {}
@@ -283,26 +271,29 @@ def mtd_per_gate(daily_map, today: date, prev_month_map=None, anchor_end: date |
     return {"values": values, **meta}
 
 
-def mtd_hourly_t1_t2(daily_map, today: date, prev_month_map=None, anchor_end: date | None = None) -> dict:
-    """비교 기준선의 시간대별 평균 (T1·T2)."""
-    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map, anchor_end)
-    n = len(entries)
-    meta = _baseline_meta(kind, label, anchor, n)
-    if n == 0:
-        return {"hours": HOUR_LABELS, "T1": [0] * 24, "T2": [0] * 24, **meta}
+def hourly_mtd_avg(daily_map, year: int, month: int, cutoff_day: int) -> dict:
+    """월 1~cutoff_day의 시간대별 T1·T2 평균 (출국장 통과 기준).
+
+    동일일수 비교용 — 이번달/전월에 같은 cutoff_day를 적용해 호출.
+    """
     sums_t1 = [0] * 24
     sums_t2 = [0] * 24
-    for _, data in entries:
+    n = 0
+    for _, data in _iter_month(daily_map, year, month, day_max=cutoff_day):
         t1 = _hourly_terminal(data, "T1")
         t2 = _hourly_terminal(data, "T2")
         for i in range(24):
             sums_t1[i] += t1[i]
             sums_t2[i] += t2[i]
+        n += 1
+    if n == 0:
+        return {"hours": HOUR_LABELS, "T1": [0] * 24, "T2": [0] * 24, "days": 0, "available": False}
     return {
         "hours": HOUR_LABELS,
         "T1": [round(sums_t1[i] / n) for i in range(24)],
         "T2": [round(sums_t2[i] / n) for i in range(24)],
-        **meta,
+        "days": n,
+        "available": True,
     }
 
 
@@ -476,35 +467,6 @@ def prev_dow_reserved_avg(daily_map_prev, year_p: int, month_p: int) -> dict:
     for wd in set(avg_t1) | set(avg_t2):
         avg_total[wd] = avg_t1.get(wd, 0) + avg_t2.get(wd, 0)
     return {"T1": avg_t1, "T2": avg_t2, "total": avg_total}
-
-
-def prev_dow_hourly_avg(daily_map_prev, year_p: int, month_p: int, weekday: int) -> dict:
-    """전월 특정 요일의 시간대별 T1·T2 평균 (출국장 통과 기준).
-
-    weekday: 0(월)~6(일)
-    Returns: {"hours": HOUR_LABELS, "T1": [24], "T2": [24], "available": bool, "n": int}
-    """
-    sums_t1 = [0] * 24
-    sums_t2 = [0] * 24
-    n = 0
-    for d, data in _iter_month(daily_map_prev, year_p, month_p, day_max=31):
-        if d.weekday() != weekday:
-            continue
-        t1 = _hourly_terminal(data, "T1")
-        t2 = _hourly_terminal(data, "T2")
-        for i in range(24):
-            sums_t1[i] += t1[i]
-            sums_t2[i] += t2[i]
-        n += 1
-    if n == 0:
-        return {"hours": HOUR_LABELS, "T1": [0] * 24, "T2": [0] * 24, "available": False, "n": 0}
-    return {
-        "hours": HOUR_LABELS,
-        "T1": [round(sums_t1[i] / n) for i in range(24)],
-        "T2": [round(sums_t2[i] / n) for i in range(24)],
-        "available": True,
-        "n": n,
-    }
 
 
 def route_compare(daily_map_curr, daily_map_prev, terminal: str,

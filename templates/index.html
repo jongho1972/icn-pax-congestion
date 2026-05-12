@@ -995,24 +995,6 @@
     </div>
   </section>
 
-  {# ▼ 시간대별 — 일자별과 분리된 별도 섹션 #}
-  <section>
-    <h2 class="section-title">시간대별</h2>
-    <p class="section-note" style="margin:4px 0 12px;color:var(--text-light);font-size:12.5px;">
-      ※ 여기부터는 <b>실제 출국장을 통과하는 인원</b>(환승객 제외) 기준
-    </p>
-    <div class="chart-grid">
-      <div class="chart-card">
-        <h3>T1</h3>
-        <div id="chart-hourly-t1" class="chart"></div>
-      </div>
-      <div class="chart-card">
-        <h3>T2</h3>
-        <div id="chart-hourly-t2" class="chart"></div>
-      </div>
-    </div>
-  </section>
-
   {# 월누적 (이번달 1~max_data_day vs 전월 동일일수) #}
   {% set mo = p.monthly %}
   <section>
@@ -1105,6 +1087,24 @@
     {% else %}
       <p class="section-note">전월 비교 데이터가 부족합니다.</p>
     {% endif %}
+  </section>
+
+  {# ▼ 시간대별 — 월누적 다음, 출국장 통과 베이스 구간의 시작 #}
+  <section>
+    <h2 class="section-title">시간대별</h2>
+    <p class="section-note" style="margin:4px 0 12px;color:var(--text-light);font-size:12.5px;">
+      ※ 여기부터는 <b>실제 출국장을 통과하는 인원</b>(환승객 제외) 기준
+    </p>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>T1</h3>
+        <div id="chart-hourly-t1" class="chart"></div>
+      </div>
+      <div class="chart-card">
+        <h3>T2</h3>
+        <div id="chart-hourly-t2" class="chart"></div>
+      </div>
+    </div>
   </section>
 
   <!-- 출국장별 출국객수 (이번달 MTD vs 전월 동일일수 MTD) -->
@@ -1360,15 +1360,17 @@
   };
   var CONFIG = { displayModeBar: false, responsive: true };
 
-  // 화면 전체 기준 일자 — 핵심 요약 카드 + 시간대별 차트만 focus 일자(오늘/내일) 사용.
-  // 출국장별·도착지별은 이번달 MTD vs 전월 동일일수 MTD 비교로 변경됨.
-  var FOCUS_TOMORROW = !!P.focus_is_tomorrow;
-  var FOCUS_LABEL = P.focus_label || (FOCUS_TOMORROW ? '내일 예상' : '오늘 예상');
-  var FOCUS_HOURLY = FOCUS_TOMORROW ? P.tomorrow_hourly : P.today_hourly;
+  // 시간대별 차트 — 이번달 MTD 평균(실선) vs 전월 동일일수 MTD 평균(점선)
+  var CURR_HOURLY = P.mtd_hourly || { hours: [], T1: [], T2: [], available: false };
+  var PREV_HOURLY = P.prev_mtd_hourly || { hours: [], T1: [], T2: [], available: false };
+  var CURR_LABEL = (CURR_HOURLY.label) || '이번달 MTD 평균';
+  var PREV_LABEL = (PREV_HOURLY.label) || '전월 MTD 평균';
+  var CURR_AVAILABLE = !!CURR_HOURLY.available;
+  var PREV_AVAILABLE = !!PREV_HOURLY.available;
 
   function hourTicks() {
     // '08~09' 형태로 통일 (페이지 다른 곳과 일관)
-    return P.today_hourly.hours.map(function(h) {
+    return (CURR_HOURLY.hours || PREV_HOURLY.hours || []).map(function(h) {
       var n = parseInt(h, 10);
       var nh = (n + 1) % 24;
       return h + '~' + (nh < 10 ? '0' + nh : '' + nh);
@@ -1376,39 +1378,37 @@
   }
 
   // T1·T2 차트 y축 동일 범위 — 시각 비교 용이
-  var BASELINE_AVAILABLE = !!(P.mtd_hourly && P.mtd_hourly.available);
-  var BASELINE_LABEL = (P.mtd_hourly && P.mtd_hourly.label) || 'MTD 평균';
   var hourlyMax = 0;
   ['T1','T2'].forEach(function(k) {
-    var arrays = [FOCUS_HOURLY[k]];
-    if (BASELINE_AVAILABLE) arrays.push(P.mtd_hourly[k]);
+    var arrays = [CURR_HOURLY[k] || [], PREV_HOURLY[k] || []];
     arrays.forEach(function(arr) {
       (arr||[]).forEach(function(v) { if (v > hourlyMax) hourlyMax = v; });
     });
   });
   var sharedYRange = [0, Math.ceil(hourlyMax * 1.1 / 1000) * 1000];
 
-  // baseline trace (MTD 평균(전일까지) 또는 전월 평균) — kind=='none'이면 미표시
-  function _hourlyTraces(termKey, focusColor, baselineColor) {
+  function _hourlyTraces(termKey, currColor, prevColor) {
     var traces = [];
-    if (BASELINE_AVAILABLE) {
+    if (PREV_AVAILABLE) {
       traces.push({
         x: hourTicks(),
-        y: P.mtd_hourly[termKey],
+        y: PREV_HOURLY[termKey],
         type: 'scatter', mode: 'lines',
-        line: { color: baselineColor, width: 1.8, dash: '5px,3px' },
+        line: { color: prevColor, width: 1.8, dash: '5px,3px' },
         opacity: 0.95,
-        name: BASELINE_LABEL,
+        name: PREV_LABEL,
       });
     }
-    traces.push({
-      x: hourTicks(),
-      y: FOCUS_HOURLY[termKey],
-      type: 'scatter', mode: 'lines+markers',
-      line: { color: focusColor, width: 2.5 },
-      marker: { size: 5 },
-      name: FOCUS_LABEL,
-    });
+    if (CURR_AVAILABLE) {
+      traces.push({
+        x: hourTicks(),
+        y: CURR_HOURLY[termKey],
+        type: 'scatter', mode: 'lines+markers',
+        line: { color: currColor, width: 2.5 },
+        marker: { size: 5 },
+        name: CURR_LABEL,
+      });
+    }
     return traces;
   }
 

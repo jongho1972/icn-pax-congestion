@@ -38,9 +38,9 @@ logger = logging.getLogger("icn_pax_congestion")
 from icn_utils.aggregator import (
     ALL_ZONE_KEYS, REGIONS, T1_GATES, T2_GATES, WEEKDAY_KR,
     _reserved_out, daily_series_by_month, daily_totals, fmt_peak_hour,
-    gate_compare, hourly_per_gate, hourly_t1_t2, kpi_summary,
-    monthly_compare, mtd_hourly_t1_t2, mtd_per_gate, mtd_reserved, mtd_route,
-    prev_dow_hourly_avg, prev_dow_reserved_avg,
+    gate_compare, hourly_mtd_avg, hourly_per_gate, kpi_summary,
+    monthly_compare, mtd_per_gate, mtd_reserved, mtd_route,
+    prev_dow_reserved_avg,
     reserved_summary, route_compare, route_matrix, route_summary,
 )
 from icn_utils.data_loader import list_available_dates, load_day, load_range
@@ -266,15 +266,6 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
         if mtd["T2"] > 0 and focus_reserved["T2"] > 0:
             delta_pct_T2 = round((focus_reserved["T2"] - mtd["T2"]) / mtd["T2"] * 100, 1)
 
-    # 시간대별 차트 — baseline은 전월 동요일 평균 (항공편수 KPI 패턴과 동일)
-    today_hourly = hourly_t1_t2(today_data)
-    tomorrow_hourly = hourly_t1_t2(tomorrow_data)
-    _hourly_dow = prev_dow_hourly_avg(prev_month_map, prev_year_kpi, prev_month_kpi, focus_wd)
-    mtd_hourly = {
-        **_hourly_dow,
-        "label": f"{prev_month_kpi}월 {WEEKDAY_KR[focus_wd]}요일 평균" if _hourly_dow["available"] else "—",
-    }
-
     # 출국장별 시간대 (7개 zone)
     today_per_gate = hourly_per_gate(today_data)
     tomorrow_per_gate = hourly_per_gate(tomorrow_data)
@@ -322,6 +313,20 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
     cutoff_curr = chart_curr["max_day"] if not archive else last_dom_curr
     cutoff_curr = max(0, min(cutoff_curr, last_dom_curr))
     cutoff_prev = min(cutoff_curr, last_dom_prev) if last_dom_prev > 0 else 0
+
+    # 시간대별 차트 — 이번달 MTD 평균 vs 전월 동일일수 MTD 평균 (출국장 통과 기준)
+    curr_hourly_mtd = hourly_mtd_avg(daily_map, today.year, today.month, cutoff_curr)
+    prev_hourly_mtd = hourly_mtd_avg(prev_month_map, prev_year, prev_month, cutoff_prev) if last_dom_prev > 0 else {
+        "hours": curr_hourly_mtd["hours"], "T1": [0]*24, "T2": [0]*24, "days": 0, "available": False,
+    }
+    mtd_hourly = {
+        **curr_hourly_mtd,
+        "label": f"{today.month}월 MTD 평균" if curr_hourly_mtd["available"] else "—",
+    }
+    prev_mtd_hourly = {
+        **prev_hourly_mtd,
+        "label": f"{prev_month}월 MTD 평균 (1~{cutoff_prev}일)" if prev_hourly_mtd["available"] else "—",
+    }
 
     # 월누적 표·요약 — KPI 카드와 동일 베이스(예약합계 출국)
     monthly = monthly_compare(daily_map, prev_month_map,
@@ -440,9 +445,8 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
         "gate_mtd": gate_mtd,
         "delta_pct_T1": delta_pct_T1,
         "delta_pct_T2": delta_pct_T2,
-        "today_hourly": today_hourly,
-        "tomorrow_hourly": tomorrow_hourly,
         "mtd_hourly": mtd_hourly,
+        "prev_mtd_hourly": prev_mtd_hourly,
         "today_per_gate": today_per_gate,
         "tomorrow_per_gate": tomorrow_per_gate,
         # 노선별 (신규)
