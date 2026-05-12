@@ -1089,27 +1089,12 @@
     {% endif %}
   </section>
 
-  {# ▼ 시간대별 — 월누적 다음, 출국장 통과 베이스 구간의 시작 #}
-  <section>
-    <h2 class="section-title">시간대별</h2>
-    <p class="section-note" style="margin:4px 0 12px;color:var(--text-light);font-size:12.5px;">
-      ※ 여기부터는 <b>실제 출국장을 통과하는 인원</b>(환승객 제외) 기준
-    </p>
-    <div class="chart-grid">
-      <div class="chart-card">
-        <h3>T1</h3>
-        <div id="chart-hourly-t1" class="chart"></div>
-      </div>
-      <div class="chart-card">
-        <h3>T2</h3>
-        <div id="chart-hourly-t2" class="chart"></div>
-      </div>
-    </div>
-  </section>
-
   <!-- 출국장별 출국객수 (이번달 MTD vs 전월 동일일수 MTD) -->
   <section>
     <h2 class="section-title">출국장별</h2>
+    <p class="section-note" style="margin:4px 0 12px;color:var(--text-light);font-size:12.5px;">
+      ※ 여기부터는 <b>실제 출국장을 통과하는 인원</b>(환승객 제외) 기준
+    </p>
 
     <div class="map-controls">
       <label class="map-hour">시간대
@@ -1267,6 +1252,21 @@
       <div class="chart-card">
         <h3>T2</h3>
         <div id="chart-route-summary-t2" class="chart"></div>
+      </div>
+    </div>
+  </section>
+
+  {# ▼ 시간대별 — 페이지 마지막. 출국장 통과 베이스 안내는 출국장별 섹션에서 일괄 커버 #}
+  <section>
+    <h2 class="section-title">시간대별</h2>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>T1</h3>
+        <div id="chart-hourly-t1" class="chart"></div>
+      </div>
+      <div class="chart-card">
+        <h3>T2</h3>
+        <div id="chart-hourly-t2" class="chart"></div>
       </div>
     </div>
   </section>
