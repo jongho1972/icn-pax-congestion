@@ -1,4 +1,4 @@
-"""인천공항 국제선 예상 승객수 대시보드 (FastAPI + Jinja2).
+"""인천공항 국제선 출국객수 대시보드 (FastAPI + Jinja2).
 
 데이터 소스: airport.kr 공항 예상 혼잡도 엑셀 (자세한 스키마는
 icn_utils/excel_parser.py 참조). 매일 17:05 + 23:30 KST cron으로 받아
@@ -46,7 +46,7 @@ DAILY_DIR = BASE / "Daily_Data"
 
 DATA_START_DATE = date(2026, 1, 1)  # 엑셀 데이터 첫 일자 (2026-01-01부터 backfill 보유)
 
-app = FastAPI(title="인천공항 국제선 예상 승객수")
+app = FastAPI(title="인천공항 국제선 출국객수")
 app.add_middleware(GZipMiddleware, minimum_size=500)
 app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE / "templates"))

@@ -1,4 +1,4 @@
-# ICN Pax Congestion — 인천공항 국제선 예상 승객수
+# ICN Pax Congestion — 인천공항 국제선 출국객수
 
 airport.kr 공식 통계 페이지의 '엑셀 다운로드' 엔드포인트로 D-0(오늘) ~ D+1(내일) 출국·입국·환승·노선·셔틀트레인 정보를 매일 받아 시각화하는 대시보드 (FastAPI + Plotly.js → Render).
 
@@ -117,7 +117,7 @@ uvicorn main:app --reload --port 8000
 
 ## 신라 사이트 연동
 
-- 신라면세점 루트 랜딩(`shilla-icn-mkt.netlify.app`) Live Data 02번 카드: "인천공항 국제선 예상 승객수" / 외부 Render URL 새 탭
+- 신라면세점 루트 랜딩(`shilla-icn-mkt.netlify.app`) Live Data 02번 카드: "인천공항 국제선 출국객수" / 외부 Render URL 새 탭
 
 ## 참고
 
