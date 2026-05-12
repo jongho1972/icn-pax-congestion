@@ -244,20 +244,6 @@ def _baseline_meta(kind: str, label: str, anchor: str, days: int) -> dict:
 
 
 # ---------- MTD ----------
-def mtd_summary(daily_map, today: date, prev_month_map=None, anchor_end: date | None = None) -> dict:
-    """비교 기준선의 일평균 T1·T2 (출국장 통과 기준)."""
-    entries, kind, label, anchor = _resolve_baseline(daily_map, today, prev_month_map, anchor_end)
-    n = len(entries)
-    meta = _baseline_meta(kind, label, anchor, n)
-    if n == 0:
-        return {"T1": 0, "T2": 0, "total": 0, **meta}
-    t1s = [_terminal_total(d, "T1") for _, d in entries]
-    t2s = [_terminal_total(d, "T2") for _, d in entries]
-    t1_avg = round(sum(t1s) / n)
-    t2_avg = round(sum(t2s) / n)
-    return {"T1": t1_avg, "T2": t2_avg, "total": t1_avg + t2_avg, **meta}
-
-
 def reserved_summary(today_data: Optional[dict], tomorrow_data: Optional[dict]) -> dict:
     """예약승객 출국 기준 (SMS 알림 동일 기준) — 환승객 포함."""
     def one(data):
@@ -519,29 +505,6 @@ def prev_dow_hourly_avg(daily_map_prev, year_p: int, month_p: int, weekday: int)
         "available": True,
         "n": n,
     }
-
-
-def prev_dow_avg(daily_map_prev, year_p: int, month_p: int) -> dict:
-    """전월 요일별 T1/T2/합계 평균 (출국장 통과 기준).
-
-    Returns: {"T1": {wd: avg}, "T2": {wd: avg}, "total": {wd: avg}} — wd ∈ 0..6 (월~일)
-    """
-    buckets_t1: dict[int, list[int]] = {}
-    buckets_t2: dict[int, list[int]] = {}
-    for d, data in _iter_month(daily_map_prev, year_p, month_p, day_max=31):
-        wd = d.weekday()
-        buckets_t1.setdefault(wd, []).append(_terminal_total(data, "T1"))
-        buckets_t2.setdefault(wd, []).append(_terminal_total(data, "T2"))
-
-    def _avg(buckets):
-        return {wd: (sum(v) / len(v)) for wd, v in buckets.items() if v}
-
-    avg_t1 = _avg(buckets_t1)
-    avg_t2 = _avg(buckets_t2)
-    avg_total = {}
-    for wd in set(avg_t1) | set(avg_t2):
-        avg_total[wd] = avg_t1.get(wd, 0) + avg_t2.get(wd, 0)
-    return {"T1": avg_t1, "T2": avg_t2, "total": avg_total}
 
 
 def route_compare(daily_map_curr, daily_map_prev, terminal: str,
