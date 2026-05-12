@@ -49,6 +49,17 @@ def _reserved_out(data: Optional[dict], terminal: str) -> int:
     return int(((data.get(terminal) or {}).get("depart", {}).get("예약합계") or {}).get("출국") or 0)
 
 
+def _terminal_value(data: Optional[dict], terminal: str, basis: str = "gate_pass") -> int:
+    """기준에 따른 일별 단일 값.
+
+    basis="gate_pass" (기본): 출국장 통과 인원 (환승객 제외, 출국장별 합계)
+    basis="reserved": 예약합계 출국 (환승객 포함, KPI 카드·SMS 동일 기준)
+    """
+    if basis == "reserved":
+        return _reserved_out(data, terminal)
+    return _terminal_total(data, terminal)
+
+
 def _hourly_terminal(data: Optional[dict], terminal: str) -> list[int]:
     """24시간 × 해당 터미널 출국장 합계 시리즈."""
     out = [0] * 24
@@ -119,8 +130,11 @@ def kpi_summary(today_data: Optional[dict], tomorrow_data: Optional[dict]) -> di
     return {"today": one(today_data), "tomorrow": one(tomorrow_data)}
 
 
-def daily_totals(daily_map: dict[str, tuple[Optional[dict], str]]) -> pd.DataFrame:
+def daily_totals(daily_map: dict[str, tuple[Optional[dict], str]], basis: str = "gate_pass") -> pd.DataFrame:
     """일별 T1/T2/터미널별 피크/소스.
+
+    T1·T2 합계는 basis(gate_pass|reserved)에 따라 산출.
+    peak_hour/peak_total은 시간대별 시트가 출국장 통과 베이스만 제공하므로 basis와 무관하게 그대로 유지.
 
     Returns: DataFrame[YYYYMMDD, T1, T2,
                         peak_hour_T1, peak_total_T1,
@@ -138,8 +152,8 @@ def daily_totals(daily_map: dict[str, tuple[Optional[dict], str]]) -> pd.DataFra
             continue
         t1_hourly = _hourly_terminal(data, "T1")
         t2_hourly = _hourly_terminal(data, "T2")
-        t1 = sum(t1_hourly)
-        t2 = sum(t2_hourly)
+        t1 = _terminal_value(data, "T1", basis)
+        t2 = _terminal_value(data, "T2", basis)
         peak_h_t1 = max(range(24), key=lambda i: t1_hourly[i]) if any(t1_hourly) else None
         peak_h_t2 = max(range(24), key=lambda i: t2_hourly[i]) if any(t2_hourly) else None
         rows.append({
@@ -383,15 +397,16 @@ def _iter_month(daily_map, year: int, month: int, day_max: int):
         yield d, data
 
 
-def daily_series_by_month(daily_map, year: int, month: int, chart_last_day: int) -> dict:
+def daily_series_by_month(daily_map, year: int, month: int, chart_last_day: int, basis: str = "gate_pass") -> dict:
     """월간 일자별 T1·T2 시리즈 (1~chart_last_day, 데이터 없는 날=null).
 
     이번달 차트는 데이터가 있는 일자까지만 그리고, 그 이후는 null로 둔다.
     전월 차트는 말일까지 데이터가 채워진 상태.
+    basis: "gate_pass"(출국장 통과) | "reserved"(예약합계 출국, KPI 동일)
     """
     by_day: dict[int, tuple[int, int]] = {}
     for d, data in _iter_month(daily_map, year, month, day_max=31):
-        by_day[d.day] = (_terminal_total(data, "T1"), _terminal_total(data, "T2"))
+        by_day[d.day] = (_terminal_value(data, "T1", basis), _terminal_value(data, "T2", basis))
     t1 = [None] * chart_last_day
     t2 = [None] * chart_last_day
     for day, (a, b) in by_day.items():
@@ -404,13 +419,16 @@ def daily_series_by_month(daily_map, year: int, month: int, chart_last_day: int)
 
 def monthly_compare(daily_map_curr, daily_map_prev,
                     year_c: int, month_c: int, year_p: int, month_p: int,
-                    cutoff_curr: int, cutoff_prev: int) -> dict:
-    """이번달/전월 동일일수 월누적 비교 (출국장 통과 기준)."""
+                    cutoff_curr: int, cutoff_prev: int, basis: str = "gate_pass") -> dict:
+    """이번달/전월 동일일수 월누적 비교.
+
+    basis: "gate_pass"(출국장 통과) | "reserved"(예약합계 출국, KPI 동일)
+    """
     def sum_term(daily_map, year, month, cutoff):
         t1, t2, n = 0, 0, 0
         for _, data in _iter_month(daily_map, year, month, cutoff):
-            t1 += _terminal_total(data, "T1")
-            t2 += _terminal_total(data, "T2")
+            t1 += _terminal_value(data, "T1", basis)
+            t2 += _terminal_value(data, "T2", basis)
             n += 1
         return t1, t2, n
     t1c, t2c, dc = sum_term(daily_map_curr, year_c, month_c, cutoff_curr)

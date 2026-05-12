@@ -40,7 +40,7 @@ from icn_utils.aggregator import (
     _reserved_out, daily_series_by_month, daily_totals, fmt_peak_hour,
     gate_compare, hourly_per_gate, hourly_t1_t2, kpi_summary,
     monthly_compare, mtd_hourly_t1_t2, mtd_per_gate, mtd_reserved, mtd_route,
-    mtd_summary, prev_dow_avg, prev_dow_hourly_avg, prev_dow_reserved_avg,
+    prev_dow_hourly_avg, prev_dow_reserved_avg,
     reserved_summary, route_compare, route_matrix, route_summary,
 )
 from icn_utils.data_loader import list_available_dates, load_day, load_range
@@ -252,16 +252,19 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
         "available": len(rates),
     }
 
-    # MTD
-    mtd = mtd_summary(daily_map, today, prev_month_map, anchor_end)
+    # MTD — 일자별 추이 가로선·표 비교용 (KPI 카드와 동일 베이스 = 예약합계 출국, 환승객 포함)
+    mtd = mtd_reserved(daily_map, today, prev_month_map, anchor_end)
+    # 출국장별 평면도(▲▼)는 출국장 통과 raw 데이터 기반 → 그대로 출국장 통과 기준 유지
     gate_mtd = mtd_per_gate(daily_map, today, prev_month_map, anchor_end)
+    # delta_pct는 mtd와 동일 베이스(예약합계 출국)로 산출 — focus(오늘/내일) 예약 vs MTD 평균
+    focus_reserved = reserved["tomorrow"] if focus_is_tomorrow else reserved["today"]
     delta_pct_T1 = None
     delta_pct_T2 = None
     if mtd.get("available"):
-        if mtd["T1"] > 0 and kpi["tomorrow"]["T1"] > 0:
-            delta_pct_T1 = round((kpi["tomorrow"]["T1"] - mtd["T1"]) / mtd["T1"] * 100, 1)
-        if mtd["T2"] > 0 and kpi["tomorrow"]["T2"] > 0:
-            delta_pct_T2 = round((kpi["tomorrow"]["T2"] - mtd["T2"]) / mtd["T2"] * 100, 1)
+        if mtd["T1"] > 0 and focus_reserved["T1"] > 0:
+            delta_pct_T1 = round((focus_reserved["T1"] - mtd["T1"]) / mtd["T1"] * 100, 1)
+        if mtd["T2"] > 0 and focus_reserved["T2"] > 0:
+            delta_pct_T2 = round((focus_reserved["T2"] - mtd["T2"]) / mtd["T2"] * 100, 1)
 
     # 시간대별 차트 — baseline은 전월 동요일 평균 (항공편수 KPI 패턴과 동일)
     today_hourly = hourly_t1_t2(today_data)
@@ -294,8 +297,9 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
     last_dom_prev = calendar.monthrange(prev_year, prev_month)[1] if prev_last >= DATA_START_DATE else 0
     chart_last_day = max(last_dom_curr, last_dom_prev)
 
-    chart_curr = daily_series_by_month(daily_map, today.year, today.month, chart_last_day)
-    chart_prev = daily_series_by_month(prev_month_map, prev_year, prev_month, chart_last_day)
+    # 일자별 추이 차트 — KPI 카드와 동일 베이스(예약합계 출국, 환승객 포함)
+    chart_curr = daily_series_by_month(daily_map, today.year, today.month, chart_last_day, basis="reserved")
+    chart_prev = daily_series_by_month(prev_month_map, prev_year, prev_month, chart_last_day, basis="reserved")
 
     # 주말·공휴일 (이번달 기준)
     if _kr_holidays_pkg is not None:
@@ -319,9 +323,10 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
     cutoff_curr = max(0, min(cutoff_curr, last_dom_curr))
     cutoff_prev = min(cutoff_curr, last_dom_prev) if last_dom_prev > 0 else 0
 
+    # 월누적 표·요약 — KPI 카드와 동일 베이스(예약합계 출국)
     monthly = monthly_compare(daily_map, prev_month_map,
                               today.year, today.month, prev_year, prev_month,
-                              cutoff_curr, cutoff_prev)
+                              cutoff_curr, cutoff_prev, basis="reserved")
     gate_cmp = gate_compare(daily_map, prev_month_map,
                             today.year, today.month, prev_year, prev_month,
                             cutoff_curr, cutoff_prev)
@@ -350,11 +355,11 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
         },
     }
 
-    # 일자별 추이
-    daily_df = daily_totals(daily_map)
+    # 일자별 추이 표 — KPI 카드와 동일 베이스(예약합계 출국)
+    daily_df = daily_totals(daily_map, basis="reserved")
 
-    # 전월 동요일비 산출용 평균 (요일별 T1/T2/합계)
-    dow_avg = prev_dow_avg(prev_month_map, prev_year, prev_month) if last_dom_prev > 0 else {"T1": {}, "T2": {}, "total": {}}
+    # 전월 동요일비 산출용 평균 — 일자별 표 ▲▼ 비교용, KPI와 동일 베이스
+    dow_avg = prev_dow_reserved_avg(prev_month_map, prev_year, prev_month) if last_dom_prev > 0 else {"T1": {}, "T2": {}, "total": {}}
 
     def _ratio(c: int, avg) -> float | None:
         if not avg or avg <= 0:
