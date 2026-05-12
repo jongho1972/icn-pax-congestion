@@ -109,8 +109,9 @@ uvicorn main:app --reload --port 8000
 ## 자동화
 
 - **GitHub Actions** `.github/workflows/daily-backfill.yml`
-  - 스케줄: **17:05 KST + 23:30 KST** (하루 2회)
-  - 동작: `actions/checkout` → `pip install pandas requests xlrd` → `python3 backfill_excel.py` → `git add Daily_Data/` → 변경 있으면 commit `data: backfill YYYYMMDD-HHMMKST` 후 push. 23:30 KST run에서만 Render Deploy Hook 호출.
+  - 트리거: **cron-job.org 외부 트리거** (workflow_dispatch) — 17:05 KST + 23:30 KST 하루 2회
+  - GH Actions schedule는 큐 지연(+1~3h)으로 17:30 메일러 발사 시각을 못 맞춰 2026-05-12 stale 데이터 발송 사고 발생 → cron-job.org 외부 호출로 이전 (메일러와 동일 패턴, [[project_daily_mailer_external_trigger]])
+  - 동작: `actions/checkout` → `pip install pandas requests xlrd` → `python3 backfill_excel.py` → `git add Daily_Data/` → 변경 있으면 commit `data: backfill YYYYMMDD-HHMMKST` 후 push. push 발생 시 Render Deploy Hook 호출 (두 트리거 모두).
 - **GitHub Actions** `.github/workflows/refresh-cache.yml`
   - 스케줄: **17:10 KST + 23:35 KST** (backfill 5분 후)
   - `POST /api/refresh` (헤더 `X-Refresh-Token`)

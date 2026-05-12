@@ -1,11 +1,9 @@
 name: Daily backfill
 
 on:
-  schedule:
-    # 매일 17:05 KST = 08:05 UTC — 17:00 KST OpenAPI 발표 직후 D+1 신선도 확보
-    - cron: '5 8 * * *'
-    # 매일 23:30 KST = 14:30 UTC — 그날 D-0 마감값 + 다음날 D+1 백업 (덮어쓰기)
-    - cron: '30 14 * * *'
+  # GH Actions schedule 큐 지연(+1~3h) 회피를 위해 cron-job.org에서 외부 트리거
+  # cron-job.org가 17:05 KST + 23:30 KST에 workflow_dispatch API를 호출
+  # (이전 schedule cron은 5/12 17:05 잡이 17:30 메일러 전까지 끝나지 못해 stale 데이터 발송됨)
   workflow_dispatch:
 
 permissions:
@@ -52,10 +50,9 @@ jobs:
           echo "pushed=true" >> "$GITHUB_OUTPUT"
           ls Daily_Data/ | wc -l
 
-      - name: Trigger Render deploy (scheduled cron only, on actual push)
-        # 17:05 KST(D+1 발표 직후)와 23:30 KST(D-0 마감) 두 cron 모두 deploy 트리거
-        # → 운영 화면에 새 데이터를 6.5시간 지연 없이 즉시 반영
-        if: steps.commit_push.outputs.pushed == 'true' && (github.event.schedule == '30 14 * * *' || github.event.schedule == '5 8 * * *')
+      - name: Trigger Render deploy (on actual push)
+        # cron-job.org 외부 트리거 이전 후 schedule 분기 제거 — push가 실제로 일어난 경우에만 deploy
+        if: steps.commit_push.outputs.pushed == 'true'
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
