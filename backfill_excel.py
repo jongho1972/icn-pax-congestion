@@ -84,6 +84,18 @@ def save_day(ymd: str, data: dict) -> Path:
     path = DAILY_DIR / f"passgr_{ymd}.pkl"
     with open(path, "wb") as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    # 인트라데이 검증용 추가 스냅샷 (한시적, ~2026-05-20)
+    # 같은 target date를 다른 fetch 시각에 받아 airport.kr이 17:00 외에도 갱신하는지 검증
+    # 디렉토리: Daily_Data/_verification/<targetYMD>/<fetchYMDHHMM>.pkl
+    if os.environ.get("VERIFY_INTRADAY", "1") != "0":
+        verify_dir = DAILY_DIR / "_verification" / ymd
+        verify_dir.mkdir(parents=True, exist_ok=True)
+        fetch_stamp = datetime.now(KST).strftime("%Y%m%d_%H%M")
+        verify_path = verify_dir / f"{fetch_stamp}.pkl"
+        with open(verify_path, "wb") as f:
+            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+
     return path
 
 
