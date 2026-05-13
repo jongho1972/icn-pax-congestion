@@ -17,32 +17,44 @@ URL = "https://jhawk-pax-congestion.onrender.com"
 DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "0708")
 
 
+def _run_once(page, out_path: Path) -> None:
+    # Render 콜드스타트/재시작 사이클 흡수
+    page.goto(URL, wait_until="networkidle", timeout=180_000)
+    # 비번 게이트 통과 (재시작 직후 DOM 부착 지연 흡수)
+    page.locator("#pw-input").wait_for(state="visible", timeout=60_000)
+    page.locator("#pw-input").fill(DASHBOARD_PASSWORD)
+    page.locator("#pw-input").press("Enter")
+    # Plotly 차트 SVG 등장 대기
+    page.wait_for_selector(".js-plotly-plot svg", state="attached", timeout=60_000)
+    page.wait_for_timeout(2_000)
+    # 캡처용 클래스 + 1.5배 확대 + Plotly 리사이즈 트리거
+    page.evaluate(
+        """() => {
+            document.body.classList.add('capturing');
+            document.documentElement.style.zoom = '1.5';
+            if (window.Plotly) {
+                document.querySelectorAll('.js-plotly-plot').forEach(el => window.Plotly.Plots.resize(el));
+            }
+        }"""
+    )
+    page.wait_for_timeout(1_500)
+    page.locator(".container").screenshot(path=str(out_path), type="png")
+
+
 def capture(out_path: Path) -> None:
     with sync_playwright() as p:
         browser = p.chromium.launch()
         context = browser.new_context(viewport={"width": 2000, "height": 900})
         page = context.new_page()
-        # Render 콜드스타트 흡수
-        page.goto(URL, wait_until="networkidle", timeout=180_000)
-        # 비번 게이트 통과
-        page.locator("#pw-input").fill(DASHBOARD_PASSWORD)
-        page.locator("#pw-input").press("Enter")
-        # Plotly 차트 SVG 등장 대기
-        page.wait_for_selector(".js-plotly-plot svg", state="attached", timeout=30_000)
-        page.wait_for_timeout(2_000)
-        # 캡처용 클래스 + 1.5배 확대 + Plotly 리사이즈 트리거
-        page.evaluate(
-            """() => {
-                document.body.classList.add('capturing');
-                document.documentElement.style.zoom = '1.5';
-                if (window.Plotly) {
-                    document.querySelectorAll('.js-plotly-plot').forEach(el => window.Plotly.Plots.resize(el));
-                }
-            }"""
-        )
-        page.wait_for_timeout(1_500)
-        page.locator(".container").screenshot(path=str(out_path), type="png")
-        browser.close()
+        try:
+            try:
+                _run_once(page, out_path)
+            except Exception as e:
+                print(f"[capture] 1차 시도 실패, 15초 후 재시도: {e}", file=sys.stderr)
+                page.wait_for_timeout(15_000)
+                _run_once(page, out_path)
+        finally:
+            browser.close()
 
 
 def main() -> int:
