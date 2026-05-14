@@ -321,7 +321,7 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
     }
     mtd_hourly = {
         **curr_hourly_mtd,
-        "label": f"{today.month}월 MTD 평균" if curr_hourly_mtd["available"] else "—",
+        "label": f"{today.month}월 MTD 평균 (1~{cutoff_curr}일)" if curr_hourly_mtd["available"] else "—",
     }
     prev_mtd_hourly = {
         **prev_hourly_mtd,

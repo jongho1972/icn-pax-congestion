@@ -1465,8 +1465,9 @@
   function drawRouteCompare(elId, cmp, baseColor, yRange) {
     if (!cmp || !cmp.available) return;
     var regions = cmp.regions;
-    var prevLabel = (cmp.prev_label || '전월') + ' ' + (cmp.period_label || '');
-    var currLabel = (cmp.curr_label || '이번달') + ' ' + (cmp.period_label || '');
+    var periodSuffix = cmp.period_label ? ' (' + cmp.period_label + ')' : '';
+    var prevLabel = (cmp.prev_label || '전월') + periodSuffix;
+    var currLabel = (cmp.curr_label || '이번달') + periodSuffix;
     var traces = [{
       x: regions, y: cmp.prev,
       type: 'bar', name: prevLabel,
