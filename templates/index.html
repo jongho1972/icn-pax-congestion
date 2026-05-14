@@ -634,6 +634,8 @@
     table.icn tr.total-row td.label {
       background: var(--blue-025); color: var(--navy-900); font-weight: 700;
     }
+    /* 숫자·% 셀 줄바꿈 금지 (모바일에서 한 글자씩 세로 분리 방지) */
+    table.icn th, table.icn td { white-space: nowrap; }
 
     /* 표 */
     .table-wrap {
@@ -846,6 +848,27 @@
       .chart.tall { height: 320px; }
       table.daily { font-size: 12px; }
       table.daily th, table.daily td { padding: 6px 8px 6px 4px; }
+      /* table.icn: 좁은 화면에서 column이 짓눌리지 않도록 min-width로 가로 스크롤 유도 (항공편수 패턴) */
+      table.icn {
+        font-size: 11.5px;
+        min-width: 560px;
+      }
+      table.icn th, table.icn td { padding: 6px 8px 6px 4px; }
+      table.icn thead th { padding: 8px 8px 8px 4px; font-size: 11px; }
+      table.icn thead th[rowspan],
+      table.icn thead th.t1-group,
+      table.icn thead th.t2-group,
+      table.icn thead th.tot-group { padding: 8px 6px; }
+      table.icn colgroup col.col-label { width: 72px; }
+      table.icn td.label { padding: 6px 8px; }
+      table.icn th.t1-last, table.icn td.t1-last,
+      table.icn th.t2-last, table.icn td.t2-last { padding-right: 8px; }
+      table.icn th.t1-last + th, table.icn td.t1-last + td,
+      table.icn th.t2-last + th, table.icn td.t2-last + td { padding-left: 10px; }
+      /* 일자별(8열) 표는 컬럼이 많아 별도 min-width */
+      table.icn.daily-t { min-width: 600px; }
+      table.icn.daily-t colgroup col:nth-child(1) { width: 64px; }
+      table.icn.daily-t colgroup col:nth-child(2) { width: 32px; }
       .map-controls { gap: 8px; }
       .map-stat { margin-left: 0; width: 100%; }
     }
