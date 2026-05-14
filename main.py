@@ -321,11 +321,11 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
     }
     mtd_hourly = {
         **curr_hourly_mtd,
-        "label": f"{today.month}월 MTD 평균 (1~{cutoff_curr}일)" if curr_hourly_mtd["available"] else "—",
+        "label": f"{today.month}월 (1~{cutoff_curr}일)" if curr_hourly_mtd["available"] else "—",
     }
     prev_mtd_hourly = {
         **prev_hourly_mtd,
-        "label": f"{prev_month}월 MTD 평균 (1~{cutoff_prev}일)" if prev_hourly_mtd["available"] else "—",
+        "label": f"{prev_month}월 (1~{cutoff_prev}일)" if prev_hourly_mtd["available"] else "—",
     }
 
     # 월누적 표·요약 — KPI 카드와 동일 베이스(예약합계 출국)
