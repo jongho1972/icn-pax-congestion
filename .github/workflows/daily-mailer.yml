@@ -2,7 +2,8 @@ name: Daily mailer
 
 on:
   # GH Actions schedule 큐 지연(+1~3h) 회피를 위해 cron-job.org에서 외부 트리거
-  # cron-job.org가 17:30 KST에 workflow_dispatch API를 호출해 즉시 발사
+  # cron-job.org가 17:50 KST에 workflow_dispatch API를 호출해 즉시 발사
+  # (2026-05-14 D+1 부분 적재 사고 후 17:30 → 17:50으로 이동, 17:25 backfill + 17:30 cache refresh 후 발사)
   workflow_dispatch:
     inputs:
       test_recipient:

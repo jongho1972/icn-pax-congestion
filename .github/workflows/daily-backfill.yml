@@ -2,7 +2,8 @@ name: Daily backfill
 
 on:
   # GH Actions schedule 큐 지연(+1~3h) 회피를 위해 cron-job.org에서 외부 트리거
-  # cron-job.org가 17:05 KST + 23:30 KST에 workflow_dispatch API를 호출
+  # cron-job.org가 17:25 KST + 23:30 KST에 workflow_dispatch API를 호출
+  # (2026-05-14 D+1 데이터가 17:05엔 부분 적재돼 17:30 메일이 불완전 발송 → 17:25/17:50 패턴으로 이동)
   # (이전 schedule cron은 5/12 17:05 잡이 17:30 메일러 전까지 끝나지 못해 stale 데이터 발송됨)
   workflow_dispatch:
 

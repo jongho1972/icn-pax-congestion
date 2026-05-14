@@ -29,10 +29,11 @@ airport.kr 공식 통계 페이지의 '엑셀 다운로드' 엔드포인트로 D
 - **다운로드 URL**: `https://www.airport.kr/pni/ap_ko/statisticPredictCrowdedOfInoutExcel.do?selTm={T1|T2}&pday=YYYYMMDD`
   - 인증·세션 불필요. GET 1회로 ~329KB .xls 응답 (Composite Document V2)
   - 매일 **17:00 KST** 갱신 (D+1까지 출입국·환승·노선·셔틀, D+2까지 출국 한정)
-- **수집 정책 (매일 17:05 KST + 23:30 KST 2회)**:
+- **수집 정책 (매일 17:25 KST + 23:30 KST 2회)**:
   - `Daily_Data/passgr_YYYYMMDD.pkl` — 그날 D-0 + 다음날 D+1 (덮어쓰기 — 23:30 cron이 최종값)
+  - 17:25 시각 선택 이유: airport.kr 17:00 1차 갱신 후 D+1 항공편이 점진 추가됨. 2026-05-14 D+1 데이터가 17:05엔 부분 적재(`10798B`)로 17:30 메일이 불완전 발송됨 → 17:25로 20분 늦춰 D+1 완성도 확보
 - **캐싱**: 메모리 dict (TTL 48시간, dogpile 락). 단일 워커 가정.
-- **캐시 갱신**: 17:10 KST + 23:35 KST에 GitHub Actions cron이 `/api/refresh` 호출
+- **캐시 갱신**: 17:30 KST + 23:35 KST에 GitHub Actions cron이 `/api/refresh` 호출
 
 ## 엑셀 시트 9개
 
@@ -109,15 +110,16 @@ uvicorn main:app --reload --port 8000
 ## 자동화
 
 - **GitHub Actions** `.github/workflows/daily-backfill.yml`
-  - 트리거: **cron-job.org 외부 트리거** (workflow_dispatch) — 17:05 KST + 23:30 KST 하루 2회
-  - GH Actions schedule는 큐 지연(+1~3h)으로 17:30 메일러 발사 시각을 못 맞춰 2026-05-12 stale 데이터 발송 사고 발생 → cron-job.org 외부 호출로 이전 (메일러와 동일 패턴, [[project_daily_mailer_external_trigger]])
+  - 트리거: **cron-job.org 외부 트리거** (workflow_dispatch) — 17:25 KST + 23:30 KST 하루 2회
+  - GH Actions schedule는 큐 지연(+1~3h)으로 메일러 발사 시각을 못 맞춰 2026-05-12 stale 데이터 발송 사고 발생 → cron-job.org 외부 호출로 이전 (메일러와 동일 패턴, [[project_daily_mailer_external_trigger]])
+  - 17:25 선택 이유: 17:00 airport.kr 갱신 후 D+1 항공편이 점진 추가되며, 5/14 17:05 시점엔 부분 적재 상태였음. 23:30 이전에 한 번 더 받기 위한 절충 시각.
   - 동작: `actions/checkout` → `pip install pandas requests xlrd` → `python3 backfill_excel.py` → `git add Daily_Data/` → 변경 있으면 commit `data: backfill YYYYMMDD-HHMMKST` 후 push. push 발생 시 Render Deploy Hook 호출 (두 트리거 모두).
 - **GitHub Actions** `.github/workflows/refresh-cache.yml`
-  - 스케줄: **17:10 KST + 23:35 KST** (backfill 5분 후)
+  - 스케줄: **17:30 KST + 23:35 KST** (backfill 5분 후)
   - `POST /api/refresh` (헤더 `X-Refresh-Token`)
 - **외부 cron** cron-job.org — 14분 간격 `GET /healthz`. Render 무료 슬립 방지 + 페이로드 캐시 워밍 (출발항공편조회와 동일 패턴, GH Actions 한도 절약)
 - **GitHub Actions** `.github/workflows/daily-mailer.yml`
-  - 스케줄: **17:30 KST**
+  - 스케줄: **17:50 KST** (백필 17:25 + 캐시 refresh 17:30 후 D+1 적재 여유 확보)
   - Playwright headless chromium → 비번 입력 → `body.capturing` + 1.5배 zoom → `.container` PNG 캡처 → SMTP 발송
   - 수신자: `mailing_list.txt` 우선(커밋됨, 41명, 항공편수 메일러와 동기화), 없으면 `MAIL_RECIPIENTS` 환경변수 폴백. 두 출처 모두 동일 리스트 유지
   - `workflow_dispatch` 입력 `test_recipient` 지원 — 입력 시 `Override mailing list (test only)` 스텝이 `mailing_list.txt`를 덮어써 해당 1명에게만 발송
