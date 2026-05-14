@@ -403,7 +403,24 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
             "source": row["source"],
         })
 
-    fetched_at = datetime.now(KST)
+    # 데이터 기준 시각 = pkl backfill 시 기록된 실제 airport.kr 수집 시각.
+    # focus(내일 우선) 데이터의 fetched_at을 우선 사용하고, 없으면 today 폴백.
+    # pkl 부재 시에만 현재 시각으로 폴백.
+    def _pkl_fetched_at(d):
+        if not isinstance(d, dict):
+            return None
+        v = d.get("fetched_at")
+        if not v:
+            return None
+        s = str(v).strip()
+        # template에서 " KST" 접미를 다시 붙이므로 중복 방지
+        return s[:-4].strip() if s.endswith("KST") else s
+    fetched_at_str = (
+        _pkl_fetched_at(tomorrow_data if focus_is_tomorrow else today_data)
+        or _pkl_fetched_at(today_data)
+        or _pkl_fetched_at(tomorrow_data)
+        or datetime.now(KST).strftime("%Y-%m-%d %H:%M")
+    )
 
     # 기간 표기 = 항공편수 대시보드와 동일 패턴: "{prev}/{curr} 1~Nㅇ일 동일기간"
     if prev_label_text and cutoff_curr > 0:
@@ -494,7 +511,7 @@ def _build_payload_locked(today: date, archive: bool = False) -> dict:
         },
         # 표·메타
         "table_rows": table_rows,
-        "fetched_at": fetched_at.strftime("%Y-%m-%d %H:%M"),
+        "fetched_at": fetched_at_str,
         "data_period": data_period,
         # 월 선택 메타
         "is_archive": archive,
