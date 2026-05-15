@@ -17,4 +17,4 @@ jobs:
           curl -fsS --max-time 180 --retry 2 \
             -X POST \
             -H "X-Refresh-Token: ${{ secrets.REFRESH_TOKEN }}" \
-            https://jhawk-pax-congestion.onrender.com/api/refresh
+            https://pax.j-hawk.kr/api/refresh

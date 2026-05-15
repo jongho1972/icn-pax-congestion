@@ -27,7 +27,7 @@ from icn_utils.exchange_rate import load_rates
 ROOT = Path(__file__).parent
 load_dotenv(ROOT / ".env")
 
-DASHBOARD_URL = "https://jhawk-pax-congestion.onrender.com"
+DASHBOARD_URL = "https://pax.j-hawk.kr"
 MAILING_LIST_PATH = ROOT / "mailing_list.txt"
 DAILY_DIR = ROOT / "Daily_Data"
 WEEKDAY_HANJA = ["月", "火", "水", "木", "金", "土", "日"]

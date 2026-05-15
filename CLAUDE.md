@@ -104,7 +104,7 @@ uvicorn main:app --reload --port 8000
 ## 배포
 
 - **Repo**: `jongho1972/icn-pax-congestion` (별도 git 저장소, private)
-- **Render URL**: <https://jhawk-pax-congestion.onrender.com>
+- **URL**: <https://pax.j-hawk.kr>
 - **Env (Render Dashboard)**: `REFRESH_TOKEN` (1개)
 
 ## 자동화
