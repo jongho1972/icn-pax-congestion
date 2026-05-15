@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.git/
+.github/
+.env*
+*.ipynb
+*.docx
+capture_dashboard.py
+verify_intraday_diff.py
+Daily_Data/_archive_openapi/
+.DS_Store
