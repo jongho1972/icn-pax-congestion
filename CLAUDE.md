@@ -127,7 +127,7 @@ uvicorn main:app --reload --port 8000
 
 ## 신라 사이트 연동
 
-- 신라면세점 루트 랜딩(`shilla-icn-mkt.netlify.app`) Live Data 02번 카드: "인천공항 국제선 출국객수" / 외부 Render URL 새 탭
+- 신라면세점 루트 랜딩(`shilla-jhawk.netlify.app`) Live Data 02번 카드: "인천공항 국제선 출국객수" / 외부 Render URL 새 탭
 
 ## 참고
 
