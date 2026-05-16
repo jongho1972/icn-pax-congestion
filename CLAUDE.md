@@ -1,6 +1,6 @@
 # ICN Pax Congestion — 인천공항 국제선 출국객수
 
-airport.kr 공식 통계 페이지의 '엑셀 다운로드' 엔드포인트로 D-0(오늘) ~ D+1(내일) 출국·입국·환승·노선·셔틀트레인 정보를 매일 받아 시각화하는 대시보드 (FastAPI + Plotly.js → Render).
+airport.kr 공식 통계 페이지의 '엑셀 다운로드' 엔드포인트로 D-0(오늘) ~ D+1(내일) 출국·입국·환승·노선·셔틀트레인 정보를 매일 받아 시각화하는 대시보드 (FastAPI + Plotly.js → VPS `pax.j-hawk.kr`). 2026-05-15 Render → VPS 전환 완료.
 
 ## 구성
 
@@ -15,7 +15,7 @@ airport.kr 공식 통계 페이지의 '엑셀 다운로드' 엔드포인트로 D
 | `backfill_excel.py` | airport.kr xls 다운(인증 없음, GET 1회) → 9개 시트 파싱 → 통합 dict pkl 저장 + 환율 동시 갱신 |
 | `Daily_Data/` | 일자별 통합 pkl `passgr_YYYYMMDD.pkl` + `exchange_rates.pkl` (환율 30+일치 누적) |
 | `Daily_Data/_archive_openapi/` | 구 OpenAPI 시절 pkl 보관 (사용 중지) |
-| `render.yaml` | Render 배포 설정. **buildFilter 사용 금지** (컨테이너 데이터 동기화 부작용으로 2026-05-09 제거) |
+| `render.yaml` | (deprecated) 구 Render 배포 설정. 2026-05-15 VPS 전환 이후 미사용. **buildFilter 사용 금지 (참고)** |
 | `requirements.txt` | fastapi, uvicorn, jinja2, pandas, requests, **xlrd**, holidays |
 | `.env` | `REFRESH_TOKEN` (gitignore) |
 
@@ -104,8 +104,9 @@ uvicorn main:app --reload --port 8000
 ## 배포
 
 - **Repo**: `jongho1972/icn-pax-congestion` (별도 git 저장소, private)
-- **URL**: <https://pax.j-hawk.kr>
-- **Env (Render Dashboard)**: `REFRESH_TOKEN` (1개)
+- **URL**: <https://pax.j-hawk.kr> (VPS, 2026-05-15 Render에서 이관)
+- **Env**: `REFRESH_TOKEN` (1개) — VPS 서비스 환경변수
+- VPS 운영 이후 데이터 갱신은 cron(`/api/refresh`)으로만 처리. GitHub push에 따른 배포 hook은 사용하지 않음
 
 ## 자동화
 
@@ -113,11 +114,11 @@ uvicorn main:app --reload --port 8000
   - 트리거: **cron-job.org 외부 트리거** (workflow_dispatch) — 17:25 KST + 23:30 KST 하루 2회
   - GH Actions schedule는 큐 지연(+1~3h)으로 메일러 발사 시각을 못 맞춰 2026-05-12 stale 데이터 발송 사고 발생 → cron-job.org 외부 호출로 이전 (메일러와 동일 패턴, [[project_daily_mailer_external_trigger]])
   - 17:25 선택 이유: 17:00 airport.kr 갱신 후 D+1 항공편이 점진 추가되며, 5/14 17:05 시점엔 부분 적재 상태였음. 23:30 이전에 한 번 더 받기 위한 절충 시각.
-  - 동작: `actions/checkout` → `pip install pandas requests xlrd` → `python3 backfill_excel.py` → `git add Daily_Data/` → 변경 있으면 commit `data: backfill YYYYMMDD-HHMMKST` 후 push. push 발생 시 Render Deploy Hook 호출 (두 트리거 모두).
+  - 동작: `actions/checkout` → `pip install pandas requests xlrd` → `python3 backfill_excel.py` → `git add Daily_Data/` → 변경 있으면 commit `data: backfill YYYYMMDD-HHMMKST` 후 push. (2026-05-15 VPS 전환 이후 Render Deploy Hook 호출 단계 제거)
 - **GitHub Actions** `.github/workflows/refresh-cache.yml`
   - 스케줄: **17:30 KST + 23:35 KST** (backfill 5분 후)
   - `POST /api/refresh` (헤더 `X-Refresh-Token`)
-- **외부 cron** cron-job.org — 14분 간격 `GET /healthz`. Render 무료 슬립 방지 + 페이로드 캐시 워밍 (출발항공편조회와 동일 패턴, GH Actions 한도 절약)
+- **외부 cron** cron-job.org — 14분 간격 `GET /healthz` (페이로드 캐시 워밍 유지용, VPS 전환 후 슬립 방지 목적은 없음)
 - **GitHub Actions** `.github/workflows/daily-mailer.yml`
   - 스케줄: **17:50 KST** (백필 17:25 + 캐시 refresh 17:30 후 D+1 적재 여유 확보)
   - Playwright headless chromium → 비번 입력 → `body.capturing` + 1.5배 zoom → `.container` PNG 캡처 → SMTP 발송
