@@ -1,6 +1,6 @@
 # ICN Pax Congestion — 인천공항 국제선 출국객수
 
-airport.kr 공식 통계 페이지의 '엑셀 다운로드' 엔드포인트로 D-0(오늘) ~ D+1(내일) 출국·입국·환승·노선·셔틀트레인 정보를 매일 받아 시각화하는 대시보드 (FastAPI + Plotly.js → VPS `pax.j-hawk.kr`). 2026-05-15 Render → VPS 전환 완료.
+airport.kr 공식 통계 페이지의 '엑셀 다운로드' 엔드포인트로 D-0(오늘) ~ D+1(내일) 출국·입국·환승·노선·셔틀트레인 정보를 매일 받아 시각화하는 대시보드 (FastAPI + Plotly.js → VPS `pax.jhawk.kr`). 2026-05-15 Render → VPS 전환 완료.
 
 ## 구성
 
@@ -104,7 +104,7 @@ uvicorn main:app --reload --port 8000
 ## 배포
 
 - **Repo**: `jongho1972/icn-pax-congestion` (별도 git 저장소, private)
-- **URL**: <https://pax.j-hawk.kr> (VPS, 2026-05-15 Render에서 이관)
+- **URL**: <https://pax.jhawk.kr> (VPS, 2026-05-15 Render에서 이관)
 - **Env**: `REFRESH_TOKEN` (1개) — VPS 서비스 환경변수
 - VPS 운영 이후 데이터 갱신은 cron(`/api/refresh`)으로만 처리. GitHub push에 따른 배포 hook은 사용하지 않음
 
@@ -128,7 +128,7 @@ uvicorn main:app --reload --port 8000
 
 ## 신라 사이트 연동
 
-- 신라면세점 루트 랜딩(`shilla-jhawk.netlify.app`) Live Data 02번 카드: "인천공항 국제선 출국객수" / 외부 Render URL 새 탭
+- 신라면세점 루트 랜딩(`shilla-jhawk.netlify.app`) Live Data 02번 카드: "인천공항 국제선 출국객수" / VPS `pax.jhawk.kr` 새 탭
 
 ## 참고
 

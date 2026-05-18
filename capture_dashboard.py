@@ -13,7 +13,7 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-URL = "https://pax.j-hawk.kr"
+URL = "https://pax.jhawk.kr"
 DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "0708")
 
 
