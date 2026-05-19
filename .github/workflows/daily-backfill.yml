@@ -48,6 +48,25 @@ jobs:
           echo "RESULT: PUSHED"
           ls Daily_Data/ | wc -l
 
+      # deploy.yml은 Daily_Data/** paths-ignore라 데이터-only push는 VPS 동기화 안 됨.
+      # 백필 직후 VPS에서 git pull + /api/refresh 호출해 17:50 메일러 캡처/본문 불일치 방지.
+      - name: Sync VPS data + refresh cache
+        if: success()
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/j-hawk/icn-pax-congestion
+            git fetch origin main
+            git reset --hard origin/main
+            TOKEN=$(grep ^REFRESH_TOKEN /opt/j-hawk/deploy/.env.pax | cut -d= -f2-)
+            curl -fsS --max-time 60 -X POST \
+              -H "X-Refresh-Token: $TOKEN" \
+              https://pax.jhawk.kr/api/refresh
+
       - name: Notify on failure
         if: failure()
         env:
