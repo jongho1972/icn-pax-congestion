@@ -138,7 +138,9 @@ def _resolved_today(ym: str | None) -> tuple[date, bool]:
 
 
 def _available_months() -> list[str]:
-    """Daily_Data 보유 월(YYYYMM) — DATA_START_DATE 이후 + 이번 달 포함, 정렬."""
+    """Daily_Data 보유 월(YYYYMM) — DATA_START_DATE 이후 + 이번 달 포함, 최신→과거 순.
+
+    드롭다운에 이번 달이 맨 위로 오도록 내림차순 반환 (항공편수 대시보드와 통일)."""
     avail = list_available_dates(str(DAILY_DIR))
     cutoff = DATA_START_DATE.strftime("%Y%m%d")
     months = sorted({d[:6] for d in avail if d >= cutoff})
@@ -146,7 +148,7 @@ def _available_months() -> list[str]:
     if cur not in months:
         months.append(cur)
         months.sort()
-    return months
+    return months[::-1]
 
 
 # ---------- 페이로드 빌드 ----------
@@ -559,6 +561,10 @@ async def index(request: Request, ym: str | None = None):
         min_dt = DATA_START_DATE
         max_dt = tomorrow
 
+    # 시작일 디폴트: 전월 1일 (데이터 시작일 하한으로 clamp). 선택 가능 범위(min)는 그대로 유지
+    prev_month_first = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
+    default_start = max(prev_month_first, min_dt)
+
     response = templates.TemplateResponse(
         request,
         "index.html",
@@ -567,7 +573,7 @@ async def index(request: Request, ym: str | None = None):
             "payload_json": json.dumps(payload, ensure_ascii=False),
             "export_min_date": min_dt.strftime("%Y-%m-%d"),
             "export_max_date": max_dt.strftime("%Y-%m-%d"),
-            "export_default_start": min_dt.strftime("%Y-%m-%d"),
+            "export_default_start": default_start.strftime("%Y-%m-%d"),
             "export_default_end": max_dt.strftime("%Y-%m-%d"),
         },
     )
