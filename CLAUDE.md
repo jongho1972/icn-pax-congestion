@@ -122,7 +122,7 @@ uvicorn main:app --reload --port 8000
 - **GitHub Actions** `.github/workflows/daily-mailer.yml`
   - 스케줄: **17:50 KST** (백필 17:25 + 캐시 refresh 17:30 후 D+1 적재 여유 확보)
   - Playwright headless chromium → 비번 입력 → `body.capturing` + 1.5배 zoom → `.container` PNG 캡처 → SMTP 발송
-  - 수신자: `mailing_list.txt` 우선(커밋됨, 41명, 항공편수 메일러와 동기화), 없으면 `MAIL_RECIPIENTS` 환경변수 폴백. 두 출처 모두 동일 리스트 유지
+  - 수신자: **`MAIL_RECIPIENTS` Secret 단일 마스터(37명, 항공편수 메일러와 동일 Secret 동기화)**. 2026-05-29 커밋돼 있던 `mailing_list.txt`(40명, 우선순위가 높아 Secret을 가로채 mireu.han 반송 발생)를 삭제 → `load_recipients()`가 파일 부재 시 `MAIL_RECIPIENTS`로 폴백. 항공편수(icn-dashboard)는 원래 파일이 없어 Secret만 사용하므로 두 메일러가 동일 출처로 통일됨
   - `workflow_dispatch` 입력 `test_recipient` 지원 — 입력 시 `Override mailing list (test only)` 스텝이 `mailing_list.txt`를 덮어써 해당 1명에게만 발송
   - 실패 시 `jongho1972@gmail.com` 자동 통지
 
