@@ -20,10 +20,13 @@ DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "0708")
 def _run_once(page, out_path: Path) -> None:
     # Render 콜드스타트/재시작 사이클 흡수
     page.goto(URL, wait_until="networkidle", timeout=180_000)
-    # 비번 게이트 통과 (재시작 직후 DOM 부착 지연 흡수)
-    page.locator("#pw-input").wait_for(state="visible", timeout=60_000)
-    page.locator("#pw-input").fill(DASHBOARD_PASSWORD)
-    page.locator("#pw-input").press("Enter")
+    # 비번 게이트가 남아 있으면 통과 (공개 전환 후엔 게이트가 없어 건너뜀)
+    try:
+        page.locator("#pw-input").wait_for(state="visible", timeout=5_000)
+        page.locator("#pw-input").fill(DASHBOARD_PASSWORD)
+        page.locator("#pw-input").press("Enter")
+    except Exception:
+        pass
     # Plotly 차트 SVG 등장 대기
     page.wait_for_selector(".js-plotly-plot svg", state="attached", timeout=60_000)
     page.wait_for_timeout(2_000)

@@ -7,105 +7,6 @@
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#ffffff">
   <title>인천공항 국제선 출국객수</title>
-  <style id="auth-gate">html,body{visibility:hidden!important;overflow:hidden!important}</style>
-  <script>
-  (function() {
-    var PASS = '0708';
-    var AUTH_KEY = 'pax_congestion_auth_ok';
-    try {
-      var navEntry = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || null;
-      var navType = navEntry ? navEntry.type : '';
-      var sameOriginRef = document.referrer && document.referrer.indexOf(location.origin) === 0;
-      if (navType === 'back_forward' && !sameOriginRef) {
-        sessionStorage.removeItem(AUTH_KEY);
-      }
-    } catch (e) {}
-    var gateStyle = document.getElementById('auth-gate');
-    try {
-      if (sessionStorage.getItem(AUTH_KEY) === '1') {
-        if (gateStyle) gateStyle.remove();
-        return;
-      }
-    } catch (e) {}
-    if (gateStyle) {
-      gateStyle.textContent = 'html,body{visibility:hidden!important;overflow:hidden!important}#pw-overlay,#pw-overlay *{visibility:visible!important}';
-    }
-    function setBodyInert(on) {
-      var targets = document.querySelectorAll('.container');
-      targets.forEach(function(el) {
-        if (on) el.setAttribute('inert', '');
-        else el.removeAttribute('inert');
-      });
-    }
-    function mountGate() {
-      var style = document.createElement('style');
-      style.id = 'pw-style';
-      style.textContent =
-        '#pw-overlay{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif}' +
-        '#pw-box{text-align:center;padding:48px 40px;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08)}' +
-        '#pw-box h2{margin:0 0 8px;font-size:18px;color:#333}' +
-        '#pw-box p{color:#333;margin:0 0 8px;font-size:14px}' +
-        '#pw-box input{padding:12px 16px;font-size:18px;border:1px solid #ddd;border-radius:8px;text-align:center;width:140px;letter-spacing:8px}' +
-        '#pw-box input:focus-visible{outline:2px solid #1F6FEB;outline-offset:2px;border-color:#8C0023}' +
-        '#pw-box button{margin-left:8px;padding:12px 24px;font-size:14px;background:#8C0023;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600}' +
-        '#pw-box button:hover{background:#a80030}' +
-        '#pw-box button:focus-visible{outline:2px solid #1F6FEB;outline-offset:2px}' +
-        '#pw-err{color:#c00;font-size:13px;margin-top:12px;display:none}';
-      document.head.appendChild(style);
-      var overlay = document.createElement('div');
-      overlay.id = 'pw-overlay';
-      overlay.setAttribute('role', 'dialog');
-      overlay.setAttribute('aria-modal', 'true');
-      overlay.setAttribute('aria-labelledby', 'pw-title');
-      overlay.innerHTML =
-        '<form id="pw-box" novalidate>' +
-          '<h2 id="pw-title">접근 제한</h2>' +
-          '<p id="pw-desc">비밀번호를 입력하세요</p>' +
-          '<div><input id="pw-input" type="password" maxlength="10" autocomplete="off" aria-label="비밀번호" aria-describedby="pw-desc">' +
-          '<button id="pw-btn" type="submit">확인</button></div>' +
-          '<div id="pw-err" role="alert" aria-live="assertive">비밀번호가 올바르지 않습니다</div>' +
-        '</form>';
-      document.body.appendChild(overlay);
-      setBodyInert(true);
-      var input = overlay.querySelector('#pw-input');
-      var err = overlay.querySelector('#pw-err');
-      function unlock() {
-        try { sessionStorage.setItem(AUTH_KEY, '1'); } catch (e) {}
-        if (gateStyle) gateStyle.remove();
-        setBodyInert(false);
-        overlay.remove();
-        style.remove();
-        setTimeout(function() {
-          try { window.dispatchEvent(new Event('resize')); } catch (e) {}
-          if (window.Plotly && window.Plotly.Plots) {
-            document.querySelectorAll('.chart').forEach(function(el) {
-              try { window.Plotly.Plots.resize(el); } catch (e) {}
-            });
-          }
-        }, 50);
-      }
-      function check(e) {
-        if (e && e.preventDefault) e.preventDefault();
-        if (input.value === PASS) {
-          unlock();
-        } else {
-          err.style.display = 'block';
-          input.value = '';
-          input.focus();
-        }
-      }
-      overlay.querySelector('#pw-box').addEventListener('submit', check);
-      if (window.matchMedia('(min-width: 640px)').matches) {
-        setTimeout(function() { input.focus(); }, 0);
-      }
-    }
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', mountGate);
-    } else {
-      mountGate();
-    }
-  })();
-  </script>
   <link rel="preconnect" href="https://cdn.plot.ly" crossorigin>
   <link rel="preload" as="script" href="https://cdn.plot.ly/plotly-basic-2.35.3.min.js" crossorigin>
   <style>
@@ -1324,7 +1225,7 @@
         <li>서울외국환중개(주) 전일 고시환율</li>
       </ul>
     </div>
-    <div class="credit">Built with Claude Code by 신라면세점 인천공항점(마케팅)</div>
+    <div class="credit">Built with Claude Code by 이종호 (jongho1972@gmail.com)</div>
   </footer>
 
 </div>
