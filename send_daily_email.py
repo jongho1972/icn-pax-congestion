@@ -8,6 +8,7 @@
 """
 import argparse
 import os
+import re
 import smtplib
 import sys
 from datetime import datetime, timedelta
@@ -31,6 +32,25 @@ DASHBOARD_URL = "https://pax.jhawk.kr"
 MAILING_LIST_PATH = ROOT / "mailing_list.txt"
 DAILY_DIR = ROOT / "Daily_Data"
 WEEKDAY_HANJA = ["月", "火", "水", "木", "金", "土", "日"]
+WEEKDAY_KR = ["월", "화", "수", "목", "금", "토", "일"]
+
+
+def to_sms_safe(text: str) -> str:
+    """문자발송 시스템(EUC-KR/SMS 문자셋) 호환 텍스트로 변환.
+
+    Gmail 본문은 UTF-8이라 ₩(U+20A9)·한자 요일·em-dash 등 EUC-KR 밖 문자가
+    섞이면 일부 문자발송 시스템에서 변환 에러가 난다. 해당 문자만 ASCII/한글로 치환.
+    """
+    # 환율 미가용 폴백: "$1=₩—" → "$1=-"
+    text = text.replace("₩—", "-").replace("₩–", "-").replace("₩-", "-")
+    # 원화 기호: "$1=₩1,511.3" → "$1=1,511.3원"
+    text = re.sub(r"₩([\d,.]+)", r"\1원", text)
+    # 한자 요일 → 한글 요일
+    for han, kr in zip(WEEKDAY_HANJA, WEEKDAY_KR):
+        text = text.replace(han, kr)
+    # 잔여 특수문자 정리
+    text = text.replace("₩", "원").replace("—", "-").replace("–", "-")
+    return text
 
 
 def build_kpi_block() -> tuple[str, str]:
@@ -111,6 +131,7 @@ def load_recipients() -> list[str]:
 
 
 def send(image_path: Path, recipients: list[str], date_str: str, kpi_text: str) -> None:
+    kpi_text_sms = to_sms_safe(kpi_text)
     user = os.environ["GMAIL_USER"].strip()
     password = "".join(os.environ["GMAIL_APP_PASSWORD"].split())
 
@@ -129,6 +150,10 @@ def send(image_path: Path, recipients: list[str], date_str: str, kpi_text: str) 
     <p style="margin:0 0 12px 0;font-size:14px;color:#444;">안녕하세요,</p>
     <p style="margin:0 0 20px 0;font-size:14px;color:#444;"><strong>인천공항 국제선 출국객수</strong>를 공유드립니다.</p>
     <div style="margin:0 0 20px 0;font-size:14px;color:#444;line-height:1.7;white-space:pre-line;">{kpi_text}</div>
+    <div style="margin:0 0 20px 0;padding:14px 16px;background:#f4f6f9;border:1px dashed #b9c2cf;border-radius:6px;">
+      <p style="margin:0 0 8px 0;font-size:12px;color:#13407F;font-weight:700;">문자 발송용 (아래 텍스트를 복사해 문자 시스템에 붙여넣으세요)</p>
+      <div style="margin:0;font-size:13px;color:#222;line-height:1.7;white-space:pre-line;font-family:'Courier New',monospace;">{kpi_text_sms}</div>
+    </div>
     <p style="margin:0 0 20px 0;">
       <img src="cid:dashboard" alt="인천공항 국제선 출국객수 {date_str}" style="max-width:100%;height:auto;display:block;border:1px solid #ddd;border-radius:4px;">
     </p>
@@ -173,6 +198,7 @@ def main() -> int:
 
     kpi_text, target_date = build_kpi_block()
     print(f"[KPI] focus={target_date}\n{kpi_text}", flush=True)
+    print(f"[KPI-SMS] 문자발송용\n{to_sms_safe(kpi_text)}", flush=True)
 
     if args.test:
         recipients = [os.environ["GMAIL_USER"]]
