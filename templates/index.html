@@ -19,7 +19,7 @@
       --orange-600: #C26420;
       --orange-025: #FBF3EB;
       --red-600:    #B42318;
-      --crimson:    #8C0023;
+      --pos-red:    #C62828;
       --delta-blue: #2A52BE;
       --slate-700:  #334155;
       --slate-500:  #64748B;
@@ -244,7 +244,7 @@
       font-size: 14px; font-weight: 500; margin-left: 3px;
       color: var(--slate-500);
     }
-    .summary-row.total .val { font-size: 36px; color: var(--crimson); }
+    .summary-row.total .val { font-size: 36px; color: var(--pos-red); }
     .summary-row .mtd {
       font-size: 12px; color: var(--slate-500);
       white-space: nowrap;
@@ -273,7 +273,7 @@
       vertical-align: baseline;
     }
     .summary-row.total .delta { font-size: 16px; }
-    .summary-row .delta.pos { color: var(--crimson); }
+    .summary-row .delta.pos { color: var(--pos-red); }
     .summary-row .delta.neg { color: var(--delta-blue); }
     .summary-row .delta.flat { color: var(--slate-400); }
     .summary-row .delta .arrow { font-size: 0.85em; line-height: 1; }
@@ -368,7 +368,7 @@
       padding: 4px 10px; border-radius: 8px;
       letter-spacing: -0.2px;
     }
-    .kpi-delta.pos { background: rgba(140,0,35,0.10); color: var(--crimson); }
+    .kpi-delta.pos { background: rgba(198,40,40,0.10); color: var(--pos-red); }
     .kpi-delta.neg { background: var(--blue-025); color: var(--delta-blue); }
     .kpi-delta.flat { background: var(--slate-050); color: var(--slate-700); }
     .kpi-baseline {
@@ -526,7 +526,7 @@
       background: transparent; color: var(--slate-700); font-weight: 500;
       padding: 7px 12px;
     }
-    table.icn td.pos { color: var(--crimson); font-weight: 600; font-variant-numeric: tabular-nums; }
+    table.icn td.pos { color: var(--pos-red); font-weight: 600; font-variant-numeric: tabular-nums; }
     table.icn td.neg { color: var(--delta-blue); font-weight: 600; font-variant-numeric: tabular-nums; }
     table.icn td.dash { color: var(--slate-400); font-weight: 400; }
     table.icn th.t1-last, table.icn td.t1-last {
@@ -939,7 +939,7 @@
         {%- if p and p > 0 -%}
           {%- set r = ((c - p) / p) -%}
           {%- if r > 0.0001 -%}
-            <span style="color:#8C0023;font-weight:600;font-variant-numeric:tabular-nums;">(전월비 ▲ {{ '{:.1f}'.format(r * 100) }}%)</span>
+            <span style="color:#C62828;font-weight:600;font-variant-numeric:tabular-nums;">(전월비 ▲ {{ '{:.1f}'.format(r * 100) }}%)</span>
           {%- elif r < -0.0001 -%}
             <span style="color:#2A52BE;font-weight:600;font-variant-numeric:tabular-nums;">(전월비 ▼ {{ '{:.1f}'.format((r * -1) * 100) }}%)</span>
           {%- else -%}
@@ -1718,7 +1718,7 @@
         if (!inactive && pv > 0 && v > 0) {
           var pct = (v - pv) / pv * 100;
           var arrow = pct > 0.05 ? '▲' : (pct < -0.05 ? '▼' : '―');
-          var color = pct > 0.05 ? '#8C0023' : (pct < -0.05 ? '#2A52BE' : '#909090');
+          var color = pct > 0.05 ? '#C62828' : (pct < -0.05 ? '#2A52BE' : '#909090');
           deltaText.textContent = arrow + ' ' + (pct > 0 ? '+' : '') + pct.toFixed(1) + '%';
           deltaText.setAttribute('fill', color);
         } else {
