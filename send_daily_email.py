@@ -149,7 +149,6 @@ def send(image_path: Path, recipients: list[str], date_str: str, kpi_text: str) 
   <div style="max-width:960px;margin:0 auto;background:#fff;padding:28px;border-radius:8px;border:1px solid #e5e5ea;">
     <p style="margin:0 0 12px 0;font-size:14px;color:#444;">안녕하세요,</p>
     <p style="margin:0 0 20px 0;font-size:14px;color:#444;"><strong>인천공항 국제선 출국객수</strong>를 공유드립니다.</p>
-    <div style="margin:0 0 20px 0;font-size:14px;color:#444;line-height:1.7;white-space:pre-line;">{kpi_text}</div>
     <div style="margin:0 0 20px 0;padding:14px 16px;background:#f4f6f9;border:1px dashed #b9c2cf;border-radius:6px;">
       <p style="margin:0 0 8px 0;font-size:12px;color:#13407F;font-weight:700;">문자 발송용 (아래 텍스트를 복사해 문자 시스템에 붙여넣으세요)</p>
       <div style="margin:0;font-size:13px;color:#222;line-height:1.7;white-space:pre-line;font-family:'Courier New',monospace;">{kpi_text_sms}</div>
