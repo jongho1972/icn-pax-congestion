@@ -28,7 +28,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -610,6 +610,27 @@ async def refresh_cache(x_refresh_token: str | None = Header(None)):
 @app.get("/healthz")
 async def healthz():
     return {"ok": True, "time": datetime.now(KST).isoformat()}
+
+
+@app.get("/robots.txt", include_in_schema=False)
+async def robots_txt():
+    return Response(
+        "User-agent: *\nAllow: /\nDisallow: /api/\n\n"
+        "Sitemap: https://pax.jhawk.kr/sitemap.xml\n",
+        media_type="text/plain",
+    )
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def sitemap_xml():
+    return Response(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        "  <url><loc>https://pax.jhawk.kr/</loc>"
+        "<changefreq>daily</changefreq><priority>1.0</priority></url>\n"
+        "</urlset>\n",
+        media_type="application/xml",
+    )
 
 
 # ---------- raw CSV export ----------
