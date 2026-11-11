@@ -1,9 +1,11 @@
-fastapi
-uvicorn[standard]
-jinja2
-python-dotenv
-pandas>=2.0
-numpy>=2.0
-requests>=2.31
-xlrd>=2.0.1
-holidays>=0.50
+# 버전 고정(2026-11-11): 운영 컨테이너 설치 버전 기준. 무제한 핀은 재빌드 때 조용히 올라가는 사고 원인(관광통계 pandas 3.x 사례).
+# 올릴 때는 깨끗한 venv에서 동작 확인 후 함께 갱신할 것.
+fastapi==0.162.2
+uvicorn[standard]==0.54.0
+jinja2==3.1.6
+python-dotenv==1.2.4
+pandas==3.1.1
+numpy==2.5.4
+requests==2.34.2
+xlrd==2.0.2
+holidays==0.108
