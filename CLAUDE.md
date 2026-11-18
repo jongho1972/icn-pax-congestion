@@ -16,7 +16,7 @@ airport.kr 공식 통계 페이지의 '엑셀 다운로드' 엔드포인트로 D
 | `Daily_Data/` | 일자별 통합 pkl `passgr_YYYYMMDD.pkl` + `exchange_rates.pkl` (환율 30+일치 누적) |
 | `Daily_Data/_archive_openapi/` | 구 OpenAPI 시절 pkl 보관 (사용 중지) |
 | `render.yaml` | (deprecated) 구 Render 배포 설정. 2026-05-15 VPS 전환 이후 미사용. **buildFilter 사용 금지 (참고)** |
-| `requirements.txt` | fastapi, uvicorn, jinja2, pandas, requests, **xlrd**, holidays |
+| `requirements.txt` | fastapi, uvicorn, jinja2, pandas, requests, **xlrd**, holidays — 전부 `==` 고정(2026-11-11). cron 워크플로우(daily-backfill·daily-mailer) `pip install`도 같은 버전 고정(2026-11-18) — 올릴 때 함께 갱신 |
 | `.env` | `REFRESH_TOKEN` (gitignore) |
 
 ## 접근 제어
