@@ -29,7 +29,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install python-dotenv playwright pandas requests xlrd holidays
+          pip install python-dotenv==1.2.4 playwright pandas==3.1.1 numpy==2.5.4 requests==2.34.2 xlrd==2.0.2 holidays==0.108  # 데이터 라이브러리는 requirements.txt와 동일 고정
           playwright install --with-deps chromium
 
       - name: Override mailing list (test only)

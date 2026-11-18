@@ -26,7 +26,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install pandas requests xlrd
+        run: pip install pandas==3.1.1 numpy==2.5.4 requests==2.34.2 xlrd==2.0.2  # requirements.txt와 동일 버전 고정
 
       - name: Run airport.kr Excel backfill (D-0 + D+1)
         run: python3 backfill_excel.py
