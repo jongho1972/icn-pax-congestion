@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="index, follow">
   <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#f7f8fa">
   <title>인천공항 출국객수·출국장 혼잡도 | 실시간 예측 대시보드</title>
   <meta name="description" content="인천공항 국제선 출국객수와 출국장 혼잡도를 터미널(T1·T2)·시간대·도착지별로 매일 예측·비교하는 대시보드입니다. 오늘과 내일의 예상 출국객수를 미리 확인하세요.">
   <link rel="canonical" href="https://pax.jhawk.kr/">
@@ -36,31 +36,32 @@
   <link rel="preload" as="script" href="https://cdn.plot.ly/plotly-basic-2.35.3.min.js" crossorigin>
   <style>
     :root {
+      --page:       #F7F8FA;
       --navy-900:   #0B2E5C;
       --navy-700:   #13407F;
-      --blue-500:   #1F6FEB;
+      --blue-500:   #1D5FD1;
       --blue-050:   #DCE8F6;
       --blue-025:   #F4F7FB;
-      --orange-600: #C26420;
+      --orange-600: #A35A24;
       --orange-025: #FBF3EB;
       --red-600:    #B42318;
-      --pos-red:    #C62828;
-      --delta-blue: #2A52BE;
+      --pos-red:    #C0392F;
+      --delta-blue: #355F9E;
       --slate-700:  #334155;
-      --slate-500:  #64748B;
+      --slate-500:  #5A6B82;
       --slate-400:  #94A3B8;
       --slate-200:  #CBD5E1;
-      --slate-100:  #E5EAF0;
+      --slate-100:  #E4E9F0;
       --slate-050:  #EEF2F6;
-      --t1:         #1F6FEB;
+      --t1:         #1D5FD1;
       --t1-soft:    #DCE8F6;
-      --t2:         #C26420;
+      --t2:         #A35A24;
       --t2-soft:    #F7E4D2;
       --card:       #FFFFFF;
-      --text:       #111827;
+      --text:       #0D1B2E;
       --text-mid:   #334155;
-      --text-light: #64748B;
-      --border:     #E5EAF0;
+      --text-light: #5A6B82;
+      --border:     #E4E9F0;
       --red-day:    #B42318;
       --future-bg:  #FFF8E1;
     }
@@ -68,7 +69,7 @@
     html, body { margin: 0; padding: 0; }
     body {
       font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-      background: #ffffff;
+      background: var(--page);
       color: var(--text);
       letter-spacing: -0.011em;
       -webkit-font-smoothing: antialiased;
@@ -122,6 +123,7 @@
       letter-spacing: -0.01em;
       transition: background 0.15s;
     }
+    .btn-icon { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
     .action-btn:hover { background: var(--navy-700); }
     .action-btn:disabled { background: var(--slate-400); cursor: wait; }
     .action-btn.secondary { background: var(--navy-700); }
@@ -261,14 +263,14 @@
       letter-spacing: -0.01em;
     }
     .summary-row .val {
-      font-size: 28px; font-weight: 700; color: var(--navy-900);
+      font-size: 28px; font-weight: 700; color: var(--text);
       letter-spacing: -0.025em;
     }
     .summary-row .val .unit {
       font-size: 14px; font-weight: 500; margin-left: 3px;
       color: var(--slate-500);
     }
-    .summary-row.total .val { font-size: 36px; color: var(--pos-red); }
+    .summary-row.total .val { font-size: 36px; }
     .summary-row .mtd {
       font-size: 12px; color: var(--slate-500);
       white-space: nowrap;
@@ -392,7 +394,7 @@
       padding: 4px 10px; border-radius: 8px;
       letter-spacing: -0.2px;
     }
-    .kpi-delta.pos { background: rgba(198,40,40,0.10); color: var(--pos-red); }
+    .kpi-delta.pos { background: rgba(192,57,47,0.10); color: var(--pos-red); }
     .kpi-delta.neg { background: var(--blue-025); color: var(--delta-blue); }
     .kpi-delta.flat { background: var(--slate-050); color: var(--slate-700); }
     .kpi-baseline {
@@ -476,9 +478,12 @@
     }
     .chart.tall { height: 420px; }
     /* 일자별 (월간) 차트 — 항공편수 대시보드와 동일 패턴 */
-    .chart.daily-trend { height: 260px; margin-top: 8px; }
+    .chart.daily-trend {
+      height: 284px; margin-top: 8px; padding: 12px 14px;
+      background: var(--card); border: 1px solid var(--slate-100); border-radius: 8px; overflow: hidden;
+    }
     @media (max-width: 720px) {
-      .chart.daily-trend { height: 280px; }
+      .chart.daily-trend { height: 296px; padding: 8px; }
     }
 
     /* 월누적 요약 텍스트 (항공편수와 동일 톤) */
@@ -497,7 +502,7 @@
       font-size: 13.5px; line-height: 1.45;
       font-variant-numeric: tabular-nums;
       font-feature-settings: "tnum" 1, "ss01" 1;
-      color: #0A0F1E; letter-spacing: -0.01em;
+      color: var(--text); letter-spacing: -0.01em;
       border-top: 1.5px solid var(--navy-900);
       table-layout: fixed;
     }
@@ -572,8 +577,10 @@
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
       background: var(--card);
+      border: 1px solid var(--slate-100); border-radius: 8px;
       margin: 4px 0 0 0;
     }
+    .table-wrap > table.icn { margin-top: 0; }
     .table-wrap:focus-visible { outline: 2px solid var(--navy-700); outline-offset: 2px; }
     .visually-hidden {
       position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -584,7 +591,7 @@
       font-size: 13.5px; line-height: 1.45;
       font-variant-numeric: tabular-nums;
       font-feature-settings: "tnum" 1, "ss01" 1;
-      color: #0A0F1E; letter-spacing: -0.01em;
+      color: var(--text); letter-spacing: -0.01em;
       border-top: 1.5px solid var(--navy-900);
     }
     table.daily th, table.daily td {
@@ -646,7 +653,7 @@
       margin-top: 20px;
       padding-top: 14px;
       border-top: 1px solid var(--slate-100);
-      color: var(--slate-400);
+      color: var(--slate-500);
       font-size: 11px;
       text-align: center;
       letter-spacing: 0.02em;
@@ -751,11 +758,11 @@
     }
     .floor-legend-bar {
       flex: 1; height: 10px; border-radius: 5px;
-      background: linear-gradient(to right, rgba(31,111,235,0.10), rgba(31,111,235,0.85));
+      background: linear-gradient(to right, rgba(29,95,209,0.10), rgba(29,95,209,0.85));
       border: 1px solid var(--slate-100);
     }
     .floor-legend-bar.t2 {
-      background: linear-gradient(to right, rgba(194,100,32,0.10), rgba(194,100,32,0.85));
+      background: linear-gradient(to right, rgba(163,90,36,0.10), rgba(163,90,36,0.85));
     }
     .floor-legend-key { font-weight: 700; }
     .floor-legend-key.t1 { color: var(--t1); }
@@ -828,10 +835,10 @@
     <div class="header-actions">
       <span class="update-badge">데이터 기준 {{ p.fetched_at }} KST</span>
       <button id="copy-btn" class="action-btn" type="button" aria-label="대시보드 이미지를 클립보드에 복사">
-        <span aria-hidden="true">📋</span> 이미지 복사
+        <svg class="btn-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg> 이미지 복사
       </button>
       <button id="export-btn" class="action-btn secondary" type="button" onclick="openExportModal()" aria-label="원본 데이터를 CSV 파일로 다운로드">
-        <span aria-hidden="true">📥</span> Raw Data 저장
+        <svg class="btn-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8M4.8 7 8 10.2 11.2 7M2.5 13.5h11"/></svg> Raw Data 저장
       </button>
     </div>
   </div>
@@ -966,11 +973,11 @@
         {%- if p and p > 0 -%}
           {%- set r = ((c - p) / p) -%}
           {%- if r > 0.0001 -%}
-            <span style="color:#C62828;font-weight:600;font-variant-numeric:tabular-nums;">(전월비 ▲ {{ '{:.1f}'.format(r * 100) }}%)</span>
+            <span style="color:var(--pos-red);font-weight:600;font-variant-numeric:tabular-nums;">(전월비 ▲ {{ '{:.1f}'.format(r * 100) }}%)</span>
           {%- elif r < -0.0001 -%}
-            <span style="color:#2A52BE;font-weight:600;font-variant-numeric:tabular-nums;">(전월비 ▼ {{ '{:.1f}'.format((r * -1) * 100) }}%)</span>
+            <span style="color:var(--delta-blue);font-weight:600;font-variant-numeric:tabular-nums;">(전월비 ▼ {{ '{:.1f}'.format((r * -1) * 100) }}%)</span>
           {%- else -%}
-            <span style="color:#64748B;font-weight:600;font-variant-numeric:tabular-nums;">(전월비 ― 0.0%)</span>
+            <span style="color:var(--slate-500);font-weight:600;font-variant-numeric:tabular-nums;">(전월비 ― 0.0%)</span>
           {%- endif -%}
         {%- endif -%}
       {%- endmacro %}
@@ -1371,14 +1378,14 @@
   }
 
   // 시간대별 T1 — baseline(점선) vs FOCUS(실선) — 카드 focus 일자와 동기화
-  Plotly.newPlot('chart-hourly-t1', _hourlyTraces('T1', '#1F6FEB', '#A8A29E'),
+  Plotly.newPlot('chart-hourly-t1', _hourlyTraces('T1', '#1D5FD1', '#A8A29E'),
     Object.assign({}, COMMON_LAYOUT, {
       yaxis: { title: { text: '객수(명)', standoff: 8 }, range: sharedYRange, gridcolor: '#EAECF0' },
       xaxis: { tickfont: { size: 9 }, tickangle: -45 },
     }), CONFIG);
 
   // 시간대별 T2 — baseline(점선) vs FOCUS(실선)
-  Plotly.newPlot('chart-hourly-t2', _hourlyTraces('T2', '#C26420', '#64748B'),
+  Plotly.newPlot('chart-hourly-t2', _hourlyTraces('T2', '#A35A24', '#5A6B82'),
     Object.assign({}, COMMON_LAYOUT, {
       yaxis: { title: { text: '객수(명)', standoff: 8 }, range: sharedYRange, gridcolor: '#EAECF0' },
       xaxis: { tickfont: { size: 9 }, tickangle: -45 },
@@ -1460,8 +1467,8 @@
   // 데이터 라벨이 막대 위에 출력되므로 ~18% 여유 + 10k 단위 ceil (누적값 스케일)
   var routeYRange = [0, Math.max(10000, Math.ceil(routeMaxAll * 1.18 / 10000) * 10000)];
 
-  drawRouteCompare('chart-route-summary-t1', P.route_compare_T1, '#1F6FEB', routeYRange);
-  drawRouteCompare('chart-route-summary-t2', P.route_compare_T2, '#C26420', routeYRange);
+  drawRouteCompare('chart-route-summary-t1', P.route_compare_T1, '#1D5FD1', routeYRange);
+  drawRouteCompare('chart-route-summary-t2', P.route_compare_T2, '#A35A24', routeYRange);
 
   // ===== 일자별 추이 차트 (이번달 실선 + 전월 점선 + 전월 평균 + Today 수직선) =====
   (function drawDailyTrendCharts() {
@@ -1529,7 +1536,7 @@
         annotations.push({
           x: tomorrowDay, y: yMax,
           text: '내일', showarrow: false,
-          font: { size: 10, color: '#64748B', weight: 600 },
+          font: { size: 10, color: '#5A6B82', weight: 600 },
           xanchor: 'left', yanchor: 'top',
           xshift: 4, yshift: -2,
         });
@@ -1547,7 +1554,7 @@
           y: prevAvg, yref: 'y',
           text: cd.prev_label + ' 평균 ' + Math.round(prevAvg).toLocaleString(),
           showarrow: false,
-          font: { size: 9, color: '#64748B', weight: 600 },
+          font: { size: 9, color: '#5A6B82', weight: 600 },
           xanchor: 'right', yanchor: 'middle',
           xshift: -6,
           align: 'right',
@@ -1563,13 +1570,13 @@
         },
         xaxis: {
           title: '', tickmode: 'array', tickvals: tickState.tickDays, ticktext: tickState.tickText,
-          tickfont: { size: 11, color: '#64748B' },
+          tickfont: { size: 11, color: '#5A6B82' },
           showline: true, linecolor: '#CBD5E1',
           showgrid: false, zeroline: false,
           range: [0.5, chartLastDay + 0.5],
         },
         yaxis: {
-          title: '', tickfont: { size: 11, color: '#64748B' },
+          title: '', tickfont: { size: 11, color: '#5A6B82' },
           showline: true, linecolor: '#CBD5E1',
           showgrid: true, gridcolor: '#F1F5F9', griddash: 'dot',
           zeroline: false,
@@ -1601,13 +1608,13 @@
     var t2PrevAvg = avg(cd.series.T2_prev || []);
 
     Plotly.newPlot('chart_daily_t1',
-      traces(cd.series.T1_curr, '#1F6FEB'),
-      layout('T1', '#1F6FEB', t1PrevAvg),
+      traces(cd.series.T1_curr, '#1D5FD1'),
+      layout('T1', '#1D5FD1', t1PrevAvg),
       { displayModeBar: false, responsive: true });
 
     Plotly.newPlot('chart_daily_t2',
-      traces(cd.series.T2_curr, '#C26420'),
-      layout('T2', '#C26420', t2PrevAvg),
+      traces(cd.series.T2_curr, '#A35A24'),
+      layout('T2', '#A35A24', t2PrevAvg),
       { displayModeBar: false, responsive: true });
 
     var _resizeT;
@@ -1637,13 +1644,13 @@
     t2dg1: 'T2 1번 출국장 (동편, 카운터 A~D)',
     t2dg2: 'T2 2번 출국장 (서편, 카운터 E~H)',
   };
-  // T1=청색계(31,111,235), T2=주황계(194,100,32) — 본문 차트 토큰과 일치
+  // T1=청색계(29,95,209), T2=주황계(163,90,36) — 본문 차트 토큰과 일치
   var FILL_MIN = 0.10, FILL_MAX = 0.78;
 
   function fillForRatio(t, key) {
     var clamp = Math.max(0, Math.min(1, t));
     var alpha = FILL_MIN + (FILL_MAX - FILL_MIN) * clamp;
-    var rgb = (key && key.indexOf('t2') === 0) ? '194,100,32' : '31,111,235';
+    var rgb = (key && key.indexOf('t2') === 0) ? '163,90,36' : '29,95,209';
     return 'rgba(' + rgb + ',' + alpha.toFixed(3) + ')';
   }
 
@@ -1745,7 +1752,7 @@
         if (!inactive && pv > 0 && v > 0) {
           var pct = (v - pv) / pv * 100;
           var arrow = pct > 0.05 ? '▲' : (pct < -0.05 ? '▼' : '―');
-          var color = pct > 0.05 ? '#C62828' : (pct < -0.05 ? '#2A52BE' : '#909090');
+          var color = pct > 0.05 ? '#C0392F' : (pct < -0.05 ? '#355F9E' : '#909090');
           deltaText.textContent = arrow + ' ' + (pct > 0 ? '+' : '') + pct.toFixed(1) + '%';
           deltaText.setAttribute('fill', color);
         } else {
@@ -1848,8 +1855,8 @@ function buildInlineSvgStyle() {
   // CSS 변수 해소 (data URL로 로드된 SVG는 페이지 CSS·var를 못 읽음)
   const cs = getComputedStyle(document.documentElement);
   const navy = cs.getPropertyValue("--navy-900").trim() || "#0B2E5C";
-  const text = cs.getPropertyValue("--text").trim() || "#111827";
-  const slate = cs.getPropertyValue("--slate-500").trim() || "#64748B";
+  const text = cs.getPropertyValue("--text").trim() || "#0D1B2E";
+  const slate = cs.getPropertyValue("--slate-500").trim() || "#5A6B82";
   return `
     .floor-svg-export image { filter: saturate(0.25) brightness(1.18) contrast(0.85); opacity: 0.38; }
     .floor-svg-export .dg-rect { stroke: rgba(11,46,92,0.55); stroke-width: 1.5; }
@@ -1910,6 +1917,11 @@ async function rasterizeFloorSvg(svg) {
     btn.textContent = text;
     btn.disabled = !!disabled;
   };
+  const idleHtml = btn.innerHTML;  // 아이콘 포함 원래 모양
+  const resetState = () => {
+    btn.innerHTML = idleHtml;
+    btn.disabled = false;
+  };
 
   const download = (blob) => {
     const url = URL.createObjectURL(blob);
@@ -1948,7 +1960,6 @@ async function rasterizeFloorSvg(svg) {
   }
 
   btn.addEventListener("click", async () => {
-    const orig = btn.textContent;
     setState("⏳ 생성 중...", true);
     document.body.classList.add("capturing");
     let restoreFloors = () => {};
@@ -1961,7 +1972,7 @@ async function rasterizeFloorSvg(svg) {
       const target = document.querySelector(".container");
       // 4배 스케일 캡처 → 1200px로 계단식 다운샘플링 (메일 붙여넣기 사이즈 최적화)
       const srcCanvas = await html2canvas(target, {
-        backgroundColor: "#ffffff",
+        backgroundColor: "#f7f8fa",
         scale: 4,
         useCORS: true,
         logging: false,
@@ -1995,7 +2006,7 @@ async function rasterizeFloorSvg(svg) {
       canvas.toBlob(async (blob) => {
         if (!blob) {
           setState("❌ 생성 실패", false);
-          setTimeout(() => setState(orig, false), 2000);
+          setTimeout(resetState, 2000);
           return;
         }
         if (navigator.clipboard && window.ClipboardItem) {
@@ -2004,7 +2015,7 @@ async function rasterizeFloorSvg(svg) {
               new ClipboardItem({ "image/png": blob })
             ]);
             setState("✅ 복사 완료", true);
-            setTimeout(() => setState(orig, false), 2500);
+            setTimeout(resetState, 2500);
             return;
           } catch (e) {
             console.warn("clipboard.write failed, falling back to download:", e);
@@ -2012,14 +2023,14 @@ async function rasterizeFloorSvg(svg) {
         }
         download(blob);
         setState("⬇️ 다운로드됨 (클립보드 차단)", true);
-        setTimeout(() => setState(orig, false), 3000);
+        setTimeout(resetState, 3000);
       }, "image/png");
     } catch (err) {
       console.error(err);
       try { restoreFloors(); } catch (e) {}
       document.body.classList.remove("capturing");
       setState("❌ 오류 (F12 로그 확인)", false);
-      setTimeout(() => setState(orig, false), 3000);
+      setTimeout(resetState, 3000);
     }
   });
 })();
